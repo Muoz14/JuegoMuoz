@@ -15,10 +15,8 @@ public abstract class MovingObject extends GameObject {
     protected int width, height;
     protected GameState gameState;
 
-    protected boolean immuneToMeteors = false;  // Inmunidad a meteoritos
-    protected boolean lastHitByPlayer = false;  // Saber si fue destruido por el jugador
-
-    private Sound explosion;
+    protected boolean immuneToMeteors = false;
+    protected boolean lastHitByPlayer = false;
 
     public MovingObject(Vector2D position, Vector2D velocity, double maxVel, java.awt.image.BufferedImage texture, GameState gameState) {
         super(position, texture);
@@ -28,18 +26,16 @@ public abstract class MovingObject extends GameObject {
         this.angle = 0;
         this.width = texture.getWidth();
         this.height = texture.getHeight();
-        explosion = new Sound("/sounds/explosion.wav");
     }
 
     public Vector2D getCenter() {
-        return new Vector2D(position.getX() + width / 2, position.getY() + height / 2);
+        return new Vector2D(position.getX() + width / 2.0, position.getY() + height / 2.0);
     }
 
     public Rectangle getBounds() {
         return new Rectangle((int) position.getX(), (int) position.getY(), width, height);
     }
 
-    // Deteccion de colisiones
     protected void collidesWith() {
         if (isSpawnImmune()) return;
 
@@ -49,60 +45,112 @@ public abstract class MovingObject extends GameObject {
             if (m.equals(this)) continue;
             if (m.isSpawnImmune()) continue;
 
-            // Ignorar colisiones con propios lasers
+            // --- REGLAS DE IGNORAR ---
             if (this instanceof Ufo && m instanceof Laser && !((Laser) m).isPlayerLaser()) continue;
             if (this instanceof Player && m instanceof Laser && ((Laser) m).isPlayerLaser()) continue;
-
-            // Bloquear colisiones entre meteoros y UFO
             if ((this instanceof Ufo && m instanceof Meteor) || (m instanceof Ufo && this instanceof Meteor)) continue;
-
-            // El MiniBoss maneja sus PROPIAS colisiones con Lasers
             if (this instanceof Laser && m instanceof MiniBoss) continue;
-
-            // El MiniBoss tambien es inmune a meteoros
             if ((this instanceof MiniBoss && m instanceof Meteor) || (m instanceof MiniBoss && this instanceof Meteor)) continue;
-
-
-            // ---------- INICIO DE LA SOLUCION ----------
-            // Evitar que Ufo y MiniBoss colisionen entre si
             if ((this instanceof Ufo && m instanceof MiniBoss) || (this instanceof MiniBoss && m instanceof Ufo)) continue;
-            // ---------- FIN DE LA SOLUCION ----------
+            if (this instanceof PowerUp || m instanceof PowerUp) continue;
 
 
+            // --- INICIO DE LA SOLUCION: HITBOX DE BURBUJA ---
+
+            // 1. Definir los radios de colision base
+            double myRadius = this.width / 2.0;
+            double theirRadius = m.width / 2.0;
+
+            // 2. Comprobar si alguno es el jugador con escudo
+            if (this instanceof Player && ((Player)this).isShielded()) {
+                // Usar un radio de escudo mas grande (ej. 70 pixeles)
+                // Tus animaciones de escudo miden ~140px, asi que 70 es un buen radio.
+                myRadius = 70.0;
+            } else if (m instanceof Player && ((Player)m).isShielded()) {
+                theirRadius = 70.0; // Usar el mismo radio
+            }
+
+            // 3. Calcular la distancia y usar los radios (posiblemente) modificados
             double distance = m.getCenter().subtract(getCenter()).getMagnitude();
-            if (distance < m.width / 2 + width / 2) objectCollision(this, m);
+
+            if (distance < theirRadius + myRadius) {
+                // --- FIN DE LA SOLUCION ---
+
+                // --- LOGICA DE COLISION (LA QUE YA TENIAMOS) ---
+
+                Player shieldedPlayer = null;
+                MovingObject other = null;
+
+                if (this instanceof Player && ((Player)this).isShielded()) {
+                    shieldedPlayer = (Player) this;
+                    other = m;
+                } else if (m instanceof Player && ((Player)m).isShielded()) {
+                    shieldedPlayer = (Player) m;
+                    other = this;
+                }
+
+                // ESCENARIO 1: Jugador con escudo esta involucrado
+                if (shieldedPlayer != null) {
+
+                    // Caso 1.1: Escudo vs Laser Enemigo
+                    if (other instanceof Laser && !((Laser)other).isPlayerLaser()) {
+                        gameState.playExplosion(other.getCenter());
+                        other.Destroy();
+                        return;
+                    }
+
+                    // Caso 1.2: Escudo vs MiniBoss
+                    if (other instanceof MiniBoss) {
+                        shieldedPlayer.deactivateShield();
+                        gameState.addMessage(new Message(
+                                shieldedPlayer.getCenter(), false, "ESCUDO ROTO!", Color.RED, true, Assets.fontMed, gameState
+                        ));
+                        gameState.playExplosion(shieldedPlayer.getCenter());
+                        shieldedPlayer.triggerPostHitImmunity(true);
+
+                        Vector2D knockback = other.getCenter().subtract(shieldedPlayer.getCenter()).normalize().scale(5);
+                        other.velocity = other.velocity.add(knockback).limit(other.maxVel);
+
+                        return;
+                    }
+
+                    // Caso 1.3: Escudo vs Meteor o UFO
+                    if (other instanceof Meteor || other instanceof Ufo) {
+                        other.velocity = other.velocity.scale(-1);
+                        Vector2D separation = other.getCenter().subtract(shieldedPlayer.getCenter()).normalize().scale(5);
+                        other.position = other.position.add(separation);
+
+                        return;
+                    }
+                }
+
+                // ESCENARIO 2: Colision normal (sin escudo)
+                objectCollision(this, m);
+            }
         }
     }
 
     private void objectCollision(MovingObject a, MovingObject b) {
-        // Evitar colisiones si el jugador esta reapareciendo
         if ((a instanceof Player && ((Player) a).isSpawning()) || (b instanceof Player && ((Player) b).isSpawning())) return;
 
-        // Marcar que fue golpeado por el jugador
         if (a instanceof Laser && ((Laser) a).isPlayerLaser()) b.lastHitByPlayer = true;
         if (b instanceof Laser && ((Laser) b).isPlayerLaser()) a.lastHitByPlayer = true;
 
-        // Evitar que meteoros se destruyan entre si
         if (a instanceof Meteor && b instanceof Meteor) {
             return;
         }
 
-        // REGLA ESPECIAL: Si la colision es Player vs MiniBoss, solo destruir al Player.
         if (a instanceof Player && b instanceof MiniBoss) {
-            gameState.playExplosion(a.getCenter()); // Explosion del jugador
-            a.Destroy(); // Destruye al jugador (a)
-            return; // El MiniBoss (b) sobrevive
+            gameState.playExplosion(a.getCenter());
+            a.Destroy();
+            return;
         }
         if (a instanceof MiniBoss && b instanceof Player) {
-            gameState.playExplosion(b.getCenter()); // Explosion del jugador
-            b.Destroy(); // Destruye al jugador (b)
-            return; // El MiniBoss (a) sobrevive
+            gameState.playExplosion(b.getCenter());
+            b.Destroy();
+            return;
         }
 
-        // (Ya no es necesario el chequeo de Ufo vs MiniBoss aqui, porque lo filtramos en collidesWith)
-
-        // Logica original (para Player vs Meteor, Player vs UFO, etc.)
-        // Si no es una de las excepciones de arriba, destruir ambos objetos.
         gameState.playExplosion(getCenter());
         a.Destroy();
         b.Destroy();
@@ -113,14 +161,11 @@ public abstract class MovingObject extends GameObject {
     }
 
     protected void Destroy() {
-
         gameState.removeObject(this);
 
-        // Reproducir sonido solo si fue destruido por el jugador
         if (lastHitByPlayer) {
-            explosion.play();
+            Assets.explosion.play();
         }
-
     }
 
     @Override
@@ -135,7 +180,6 @@ public abstract class MovingObject extends GameObject {
 
     public boolean collides(MovingObject other) {
         double distance = other.getCenter().subtract(getCenter()).getMagnitude();
-        return distance < other.width / 2 + width / 2;
+        return distance < other.width / 2.0 + width / 2.0;
     }
-
 }

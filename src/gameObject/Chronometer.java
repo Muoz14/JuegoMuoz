@@ -10,14 +10,14 @@ public class Chronometer {
         running = false;
     }
 
-    // Inicia el cronómetro con la duración en milisegundos
+    // Inicia el cronometro con la duracion en milisegundos
     public void run(long duration) {
         this.duration = duration;
         startTime = System.currentTimeMillis();
         running = true;
     }
 
-    // Actualiza el cronómetro, opcional según tu lógica
+    // Actualiza el cronometro, opcional segun tu logica
     public void update() {
         if (!running) return;
         if (System.currentTimeMillis() - startTime >= duration) {
@@ -29,12 +29,31 @@ public class Chronometer {
         return running;
     }
 
-    // Indica si el cronómetro ya terminó
+    // Indica si el cronometro ya termino
     public boolean isFinished() {
         return !running;
     }
 
-    // Reinicia el cronómetro
+    /**
+     * Devuelve la duracion total para la que se configuro el cronometro.
+     */
+    public long getDuration() {
+        return duration;
+    }
+
+    /**
+     * Devuelve cuanto tiempo (en ms) le queda al cronometro.
+     */
+    public long getTimeRemaining() {
+        if (!running) {
+            return 0;
+        }
+        long elapsed = System.currentTimeMillis() - startTime;
+        return Math.max(0, duration - elapsed);
+    }
+
+
+    // Reinicia el cronometro
     public void reset() {
         running = false;
     }

@@ -3,7 +3,7 @@ package states;
 import gameObject.*;
 import graphics.Animation;
 import graphics.Assets;
-import graphics.Background; // <-- Importar la nueva clase
+import graphics.Background;
 import graphics.Sound;
 import graphics.SoundManager;
 import input.KeyBoard;
@@ -25,9 +25,7 @@ public class GameState extends State {
     private ArrayList<Message> messages = new ArrayList<>();
     private ArrayList<Message> messagesToRemove = new ArrayList<>();
 
-    // --- INICIO DE LA SOLUCION: Objeto de fondo ---
     private Background background;
-    // --- FIN DE LA SOLUCION ---
 
     public int meteors;
     private int waves = 1;
@@ -51,6 +49,10 @@ public class GameState extends State {
     // Aparicion del UFO
     private long lastUfoSpawnTime = 0;
     private static final long UFO_SPAWN_INTERVAL = 15000;
+
+    // --- SPAWN DE POWER-UPS ---
+    private Chronometer powerUpSpawnTimer;
+    private static final long POWERUP_SPAWN_INTERVAL = 20000; // 20 segundos
 
     // Boton pausa
     private BufferedImage pauseButtonImg;
@@ -81,11 +83,11 @@ public class GameState extends State {
         player = new Player(new Vector2D(560, 320), new Vector2D(), this, playerData, laserImg);
         movingObjects.add(player);
 
-        // --- INICIO DE LA SOLUCION: Inicializar fondo ---
         background = new Background();
-        // --- FIN DE LA SOLUCION ---
-
         meteors = 1;
+
+        powerUpSpawnTimer = new Chronometer();
+        powerUpSpawnTimer.run(POWERUP_SPAWN_INTERVAL); // Inicia el timer
 
         // Boton pausa
         pauseButtonImg = Assets.buttonPause;
@@ -226,6 +228,51 @@ public class GameState extends State {
         addObject(ufo);
     }
 
+    // --- METODOS PARA POWER-UPS ---
+
+    /**
+     * Revisa si es hora de spawnear un power-up
+     */
+    private void spawnPowerUp() {
+        powerUpSpawnTimer.update(); // Actualizar el timer
+
+        if (powerUpSpawnTimer.isFinished()) {
+
+            // 1. Elegir tipo (Bronce, Plata, Oro)
+            PowerUpType type = selectPowerUpType();
+
+            // 2. Elegir posicion de spawn (aleatoria en pantalla)
+            double x = Math.random() * (Constants.WIDTH - 100) + 50; // No tan en los bordes
+            double y = Math.random() * (Constants.HEIGHT - 100) + 50;
+            Vector2D position = new Vector2D(x, y);
+
+            // 3. Crear el objeto
+            PowerUp powerUp = new PowerUp(position, type, this);
+
+            // 4. Anadirlo al juego
+            addObject(powerUp);
+
+            // 5. Reiniciar el timer
+            powerUpSpawnTimer.run(POWERUP_SPAWN_INTERVAL);
+        }
+    }
+
+    /**
+     * Decide que tipo de power-up spawnear
+     */
+    private PowerUpType selectPowerUpType() {
+        double rand = Math.random();
+
+        // 70% Bronce, 25% Plata, 5% Oro
+        if (rand < 0.05) {
+            return PowerUpType.GOLD;
+        } else if (rand < 0.30) { // (0.30 - 0.05 = 25%)
+            return PowerUpType.SILVER;
+        } else { // (1.0 - 0.30 = 70%)
+            return PowerUpType.BRONZE;
+        }
+    }
+
     @Override
     public void update() {
         KeyBoard.update();
@@ -277,10 +324,7 @@ public class GameState extends State {
         }
 
         // ------------------ Actualizar objetos ------------------
-
-        // --- INICIO DE LA SOLUCION: Actualizar fondo ---
         background.update();
-        // --- FIN DE LA SOLUCION ---
 
         for (int i = 0; i < movingObjects.size(); i++) {
             movingObjects.get(i).update();
@@ -318,6 +362,9 @@ public class GameState extends State {
         }
 
         spawnUfo();
+
+        spawnPowerUp(); // Llamar al metodo de spawn
+
         handleWaveLogic();
     }
 
@@ -348,7 +395,7 @@ public class GameState extends State {
 
     private void handleWaveLogic() {
         boolean hayMeteoros = false;
-        boolean hayMiniBoss = false; // Nuevo chequeo
+        boolean hayMiniBoss = false;
 
         // 1. Contar enemigos
         for (MovingObject obj : movingObjects) {
@@ -497,10 +544,7 @@ public class GameState extends State {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
-        // --- INICIO DE LA SOLUCION: Dibujar fondo ---
-        // Esto DEBE ir primero para que se dibuje detras de todo
         background.draw(g);
-        // --- FIN DE LA SOLUCION ---
 
         for (Message msg : messages)
             msg.draw(g2d);
@@ -557,6 +601,8 @@ public class GameState extends State {
 
         drawScore(g);
         drawLives(g);
+
+        drawShieldHUD(g); // Dibujar la barra de escudo
     }
 
     private void drawScore(Graphics g) {
@@ -587,6 +633,37 @@ public class GameState extends State {
             g.drawImage(Assets.numbers[number], (int) pos.getX() + 65, (int) pos.getY() + 2, null);
             pos.setX(pos.getX() + 25);
         }
+    }
+
+    // --- DIBUJAR BARRA DE ESCUDO ---
+    private void drawShieldHUD(Graphics g) {
+        if (player == null || !player.isShielded()) {
+            return; // No dibujar nada si no hay escudo
+        }
+
+        double percent = player.getShieldTimeRemaining(); // (0.0 a 1.0)
+
+        int barWidth = 150; // Ancho de la barra
+        int barHeight = 15; // Alto
+        int x = Constants.WIDTH - barWidth - 30; // Posicion X (abajo derecha)
+        int y = Constants.HEIGHT - barHeight - 40; // Posicion Y
+
+        // Dibujar el texto "ESCUDO" encima
+        g.setFont(Assets.fontMed);
+        g.setColor(Color.CYAN);
+        g.drawString("ESCUDO", x, y - 5);
+
+        // Dibujar el fondo de la barra
+        g.setColor(Color.DARK_GRAY);
+        g.fillRect(x, y, barWidth, barHeight);
+
+        // Dibujar la barra de tiempo restante
+        g.setColor(Color.CYAN);
+        g.fillRect(x, y, (int)(barWidth * percent), barHeight);
+
+        // Dibujar el borde
+        g.setColor(Color.WHITE);
+        g.drawRect(x, y, barWidth, barHeight);
     }
 
     // ------------------ Musica ------------------

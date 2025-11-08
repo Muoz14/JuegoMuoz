@@ -1,6 +1,9 @@
 package gameObject;
 
+import graphics.Animation;
 import graphics.Assets;
+import graphics.Sound;
+import graphics.SoundManager;
 import input.KeyBoard;
 import math.Vector2D;
 import states.GameState;
@@ -31,6 +34,10 @@ public class Player extends MovingObject {
 
     private Chronometer spawnTime, flickerTime;
 
+    private boolean isShielded = false;
+    private Chronometer shieldTimer;
+    private Animation shieldAnimation;
+
     public Player(Vector2D position, Vector2D velocity, GameState gameState, ShipData data, BufferedImage laserTexture) {
         super(position, velocity, data.getMaxVelocity(), data.getTexture(), gameState);
         this.data = data;
@@ -42,7 +49,8 @@ public class Player extends MovingObject {
         spawnTime = new Chronometer();
         flickerTime = new Chronometer();
 
-        // APLICAMOS LA LOGICA DE VOLUMEN A LOS ASSETS ESTATICOS
+        shieldTimer = new Chronometer();
+
         float initialSFXVolume = SettingsData.getVolume() * 1.2f;
         if (initialSFXVolume > 1f) initialSFXVolume = 1f;
         Assets.playerShoot.setVolume(initialSFXVolume);
@@ -51,10 +59,17 @@ public class Player extends MovingObject {
 
     @Override
     public void update() {
-        // Actualizar spawn
         if (spawning) updateSpawnTimer();
 
-        // Disparo
+        if (isShielded) {
+            shieldTimer.update();
+            shieldAnimation.update();
+
+            if (shieldTimer.isFinished()) {
+                deactivateShield();
+            }
+        }
+
         if (KeyBoard.SHOOT() && !fireRate.isRunning() && !spawning) {
             Vector2D basePosition = getCenter().add(heading.scale(width));
             for (Vector2D offset : data.gunOffsets) {
@@ -80,11 +95,9 @@ public class Player extends MovingObject {
 
         if (Assets.playerShoot.getFramePosition() > 15500) Assets.playerShoot.stop();
 
-        // Rotacion
         if (KeyBoard.RIGTH()) angle += Constants.DELTAANGLE;
         if (KeyBoard.LEFT()) angle -= Constants.DELTAANGLE;
 
-        // Movimiento
         if (KeyBoard.UP()) {
             acceleration = heading.scale(Constants.ACC);
             accelerating = true;
@@ -100,7 +113,6 @@ public class Player extends MovingObject {
         heading = heading.setDirection(angle - Math.PI / 2);
         position = position.add(velocity);
 
-        // Limites de pantalla
         if (position.getX() > Constants.WIDTH) position.setX(0);
         if (position.getY() > Constants.HEIGHT) position.setY(0);
         if (position.getX() < 0) position.setX(Constants.WIDTH);
@@ -112,13 +124,17 @@ public class Player extends MovingObject {
 
     @Override
     public void Destroy() {
+        if (isSpawning() || isShielded()) {
+            return;
+        }
+
         if (!dead) {
             dead = true;
             visible = false;
             Assets.playerLoose.play();
             Assets.playerLoose.changeVolume(-2.0f);
 
-            gameState.subtractScore(80, getCenter()); // Penalizacion
+            gameState.subtractScore(80, getCenter());
             resetValues();
         }
     }
@@ -135,7 +151,6 @@ public class Player extends MovingObject {
         if (!visible) return;
         Graphics2D g2d = (Graphics2D) g;
 
-        // Propulsores
         if (accelerating) {
             for (Vector2D offset : data.thrusterOffsets) {
                 Vector2D rotatedOffset = offset.rotate(angle);
@@ -148,23 +163,40 @@ public class Player extends MovingObject {
             }
         }
 
-        // Nave
         at = AffineTransform.getTranslateInstance(position.getX(), position.getY());
         at.rotate(angle, width / 2, height / 2);
         g2d.drawImage(texture, at, null);
+
+        // --- INICIO DE LA SOLUCION: DIBUJAR ESCUDO CON ROTACION ---
+        if (isShielded && shieldAnimation != null) {
+            BufferedImage shieldFrame = shieldAnimation.getCurrentFrame();
+
+            int frameWidth = shieldFrame.getWidth();
+            int frameHeight = shieldFrame.getHeight();
+
+            // Centrar el escudo en la nave
+            double x = getCenter().getX() - (frameWidth / 2.0);
+            double y = getCenter().getY() - (frameHeight / 2.0);
+
+            // Crear una nueva transformacion para el escudo
+            AffineTransform shieldAt = AffineTransform.getTranslateInstance(x, y);
+
+            // Rotar el escudo alrededor del centro del jugador
+            // (centroDelJugadorX - posicionDelEscudoX, centroDelJugadorY - posicionDelEscudoY)
+            shieldAt.rotate(angle, getCenter().getX() - x, getCenter().getY() - y);
+
+            g2d.drawImage(shieldFrame, shieldAt, null);
+        }
+        // --- FIN DE LA SOLUCION ---
     }
 
-    // ------------------ Metodos auxiliares ------------------
     public boolean isSpawning() { return spawning; }
     public boolean isDead() { return dead; }
 
     public void startRespawn() {
         if (dead && !spawning) {
-            spawning = true;
             dead = false;
-            visible = true;
-            spawnTime.run(3000); // 3s de inmunidad
-            flickerTime.run(200); // parpadeo
+            triggerPostHitImmunity(false);
             velocity = new Vector2D();
         }
     }
@@ -185,9 +217,54 @@ public class Player extends MovingObject {
     }
 
     @Override
-    protected boolean isSpawnImmune() { return spawning; }
+    protected boolean isSpawnImmune() {
+        return spawning;
+    }
 
+    public void activateShield(PowerUpType type) {
+        isShielded = true;
+        shieldTimer.run(type.duration);
+
+        shieldAnimation = new Animation(
+                Assets.shield_effect,
+                150,
+                new Vector2D(),
+                true
+        );
+    }
+
+    public void deactivateShield() {
+        isShielded = false;
+        shieldTimer.reset();
+        shieldAnimation = null;
+    }
+
+    public void triggerPostHitImmunity(boolean applyKnockback) {
+        if (spawning) return;
+
+        spawning = true;
+        visible = true;
+        spawnTime.run(1500);
+        flickerTime.run(200);
+
+        if (applyKnockback) {
+            velocity = heading.scale(-8.0);
+        }
+    }
+
+    public boolean isShielded() {
+        return isShielded;
+    }
+
+    public double getShieldTimeRemaining() {
+        if (!isShielded || !shieldTimer.isRunning() || shieldTimer.getDuration() == 0) {
+            return 0;
+        }
+        return (double)shieldTimer.getTimeRemaining() / shieldTimer.getDuration();
+    }
+
+    @Override
     public Vector2D getCenter() {
-        return new Vector2D(position.getX() + width / 2, position.getY() + height / 2);
+        return new Vector2D(position.getX() + width / 2.0, position.getY() + height / 2.0);
     }
 }

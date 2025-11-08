@@ -59,6 +59,12 @@ public class Assets {
     public static BufferedImage layer02;
     public static BufferedImage layer03;
 
+    //POWER-UPS
+    public static BufferedImage shield_bronze, shield_silver, shield_gold;
+
+    //ANIMACION DE ESCUDO
+    public static BufferedImage[] shield_effect = new BufferedImage[3];
+
     public static void init(){
 
         // Carga de fuentes PRIMERO, porque la pantalla de carga las usa
@@ -139,10 +145,19 @@ public class Assets {
         int targetHeight = Constants.HEIGHT;
         int targetWidth = (int) (5760 * ( (double)Constants.HEIGHT / 360.0 )); // 11520
 
-        // Asumimos que las imagenes estan en una carpeta "backgrounds"
         layer01 = Loader.ImageLoader("/backgrounds/Layer 01.png", targetWidth, targetHeight);
         layer02 = Loader.ImageLoader("/backgrounds/Layer 02.png", targetWidth, targetHeight);
         layer03 = Loader.ImageLoader("/backgrounds/Layer 03.png", targetWidth, targetHeight);
+
+        //Carga de power-ups
+        shield_bronze = Loader.ImageLoader("/power-ups/shield_bronze.png");
+        shield_silver = Loader.ImageLoader("/power-ups/shield_silver.png");
+        shield_gold = Loader.ImageLoader("/power-ups/shield_gold.png");
+
+        //Carga animacion de escudo
+        shield_effect[0] = Loader.ImageLoader("/shield/shield1.png");
+        shield_effect[1] = Loader.ImageLoader("/shield/shield2.png");
+        shield_effect[2] = Loader.ImageLoader("/shield/shield3.png");
 
     }
 }

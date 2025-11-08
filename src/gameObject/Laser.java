@@ -39,18 +39,10 @@ public class Laser extends MovingObject {
         AffineTransform at = AffineTransform.getTranslateInstance(position.getX() - width / 2.0, position.getY());
         at.rotate(angle, width / 2.0, 0);
 
-        // --- INICIO DE LA SOLUCION ---
         // 2. Crear un rectangulo base (sin rotar) que sea mas delgado
-
-        // Hacemos la hitbox un 30% mas delgada (70% del ancho original)
         double hitboxWidth = width * 0.7;
-
-        // Calculamos el offset en X para que la hitbox delgada quede centrada
         double xOffset = (width - hitboxWidth) / 2.0;
-
-        // Usamos el offset y el nuevo ancho, pero mantenemos el 100% de la altura
         Rectangle2D.Double baseRect = new Rectangle2D.Double(xOffset, 0, hitboxWidth, height);
-        // --- FIN DE LA SOLUCION ---
 
         // 3. Aplicar la transformacion al rectangulo para crear el 'Shape' final
         this.hitbox = at.createTransformedShape(baseRect);
@@ -105,13 +97,18 @@ public class Laser extends MovingObject {
                 continue;
             }
 
+            // --- INICIO DE LA SOLUCION ---
+            // Ignorar los power-ups para que no sean destruidos
+            if (m instanceof PowerUp) {
+                continue;
+            }
+            // --- FIN DE LA SOLUCION ---
+
             // Comprobar colision rectangular contra los 'bounds' del otro objeto
             if (this.hitbox.intersects(m.getBounds())) {
 
-                // --- INICIO DE LA ADAPTACION ---
                 // Anadir la explosion en el centro del objeto golpeado
                 gameState.playExplosion(m.getCenter());
-                // --- FIN DE LA ADAPTACION ---
 
                 m.setLastHitByPlayer(true);
 
