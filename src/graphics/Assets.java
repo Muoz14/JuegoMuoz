@@ -1,6 +1,7 @@
 package graphics;
 
 import java.awt.*;
+import gameObject.Constants;
 import java.awt.image.BufferedImage;
 
 public class Assets {
@@ -52,6 +53,11 @@ public class Assets {
 
     //Jefes
     public static BufferedImage miniBoss;
+
+    //Fondo de GameState
+    public static BufferedImage layer01;
+    public static BufferedImage layer02;
+    public static BufferedImage layer03;
 
     public static void init(){
 
@@ -123,8 +129,20 @@ public class Assets {
         SoundManager.getInstance().registerSound(gameOver);
         SoundManager.getInstance().registerSound(hoverSound);
 
-
         //Carga de jefes
         miniBoss = Loader.ImageLoader("/boss/miniBoss.png");
+
+        // La altura original es 360, la altura de la ventana es 720 (Constants.HEIGHT)
+        // El factor de escala es 720 / 360 = 2.0
+        // El ancho original es 5760. El nuevo ancho sera 5760 * 2 = 11520
+
+        int targetHeight = Constants.HEIGHT;
+        int targetWidth = (int) (5760 * ( (double)Constants.HEIGHT / 360.0 )); // 11520
+
+        // Asumimos que las imagenes estan en una carpeta "backgrounds"
+        layer01 = Loader.ImageLoader("/backgrounds/Layer 01.png", targetWidth, targetHeight);
+        layer02 = Loader.ImageLoader("/backgrounds/Layer 02.png", targetWidth, targetHeight);
+        layer03 = Loader.ImageLoader("/backgrounds/Layer 03.png", targetWidth, targetHeight);
+
     }
 }

@@ -3,6 +3,7 @@ package states;
 import gameObject.*;
 import graphics.Animation;
 import graphics.Assets;
+import graphics.Background; // <-- Importar la nueva clase
 import graphics.Sound;
 import graphics.SoundManager;
 import input.KeyBoard;
@@ -23,6 +24,10 @@ public class GameState extends State {
     private ArrayList<Animation> explosion = new ArrayList<>();
     private ArrayList<Message> messages = new ArrayList<>();
     private ArrayList<Message> messagesToRemove = new ArrayList<>();
+
+    // --- INICIO DE LA SOLUCION: Objeto de fondo ---
+    private Background background;
+    // --- FIN DE LA SOLUCION ---
 
     public int meteors;
     private int waves = 1;
@@ -76,6 +81,10 @@ public class GameState extends State {
         player = new Player(new Vector2D(560, 320), new Vector2D(), this, playerData, laserImg);
         movingObjects.add(player);
 
+        // --- INICIO DE LA SOLUCION: Inicializar fondo ---
+        background = new Background();
+        // --- FIN DE LA SOLUCION ---
+
         meteors = 1;
 
         // Boton pausa
@@ -101,13 +110,10 @@ public class GameState extends State {
         startCountdown(); // <--- Metodo de countdown
 
         // Musica de fondo unica
-        // Detener musica anterior si existia
         if (Assets.backgroundMusic != null) {
             Assets.backgroundMusic.stop();
         }
 
-        // (El SoundManager ya deberia tener registrado 'backgroundMusic' desde Assets.init())
-        // (Pero re-ajustamos el volumen por si acaso)
         Assets.backgroundMusic.setVolume(SettingsData.getVolume());
         Assets.backgroundMusic.play();
     }
@@ -271,6 +277,11 @@ public class GameState extends State {
         }
 
         // ------------------ Actualizar objetos ------------------
+
+        // --- INICIO DE LA SOLUCION: Actualizar fondo ---
+        background.update();
+        // --- FIN DE LA SOLUCION ---
+
         for (int i = 0; i < movingObjects.size(); i++) {
             movingObjects.get(i).update();
         }
@@ -366,7 +377,7 @@ public class GameState extends State {
             completeMsg.setLifespan(3000);
             addMessage(completeMsg);
         }
-        // 3.Meteoros despejados, PERO el boss SIGUE VIVO
+        // 3. NUEVO CASO: Meteoros despejados, PERO el boss SIGUE VIVO
         else if (!hayMeteoros && hayMiniBoss && firstWaveStarted && !waveCleared && !nextWaveStarting) {
             nextWaveStarting = true;
             spawnMeteorSubWave(waves);
@@ -401,8 +412,8 @@ public class GameState extends State {
                     startWave();
                     nextWaveStarting = false;
 
-                    // Aparicion del MiniBoss cada 3 oleadas
-                    if (waves % 3 == 0) {
+                    // Aparicion del MiniBoss cada 2 oleadas
+                    if (waves % 2 == 0) {
                         try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
 
                         ShipData selectedShip = ShipLibrary.getSelectedShip();
@@ -412,7 +423,7 @@ public class GameState extends State {
                         if (numCannons >= 2) {
                             bossHealth = 30;
                         } else {
-                            bossHealth = 12; // Modificado de 10 a 12
+                            bossHealth = 12;
                         }
 
                         Vector2D bossPos = new Vector2D(Constants.WIDTH / 2 - 100, 100);
@@ -485,6 +496,11 @@ public class GameState extends State {
     public void draw(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
+        // --- INICIO DE LA SOLUCION: Dibujar fondo ---
+        // Esto DEBE ir primero para que se dibuje detras de todo
+        background.draw(g);
+        // --- FIN DE LA SOLUCION ---
 
         for (Message msg : messages)
             msg.draw(g2d);

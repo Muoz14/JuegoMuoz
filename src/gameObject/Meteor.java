@@ -19,7 +19,6 @@ public class Meteor extends MovingObject {
         this.family = family;
         this.velocity = velocity.scale(maxVel);
         this.immuneToMeteors = false;
-        // explosion = new Sound("/sounds/explosion.wav"); // <- ELIMINADO
     }
 
     @Override
