@@ -1,7 +1,6 @@
 package gameObject;
 
 import graphics.Assets;
-import graphics.Sound;
 import math.Vector2D;
 import states.GameState;
 import java.awt.*;
@@ -13,7 +12,6 @@ public class Meteor extends MovingObject {
     protected Size size;
     protected int family;
     private AffineTransform at;
-    private Sound explosion;
 
     public Meteor(Vector2D position, Vector2D velocity, double maxVel, BufferedImage texture, GameState gameState, Size size, int family) {
         super(position, velocity, maxVel, texture, gameState);
@@ -21,7 +19,7 @@ public class Meteor extends MovingObject {
         this.family = family;
         this.velocity = velocity.scale(maxVel);
         this.immuneToMeteors = false;
-        explosion = new Sound("/sounds/explosion.wav");
+        // explosion = new Sound("/sounds/explosion.wav"); // <- ELIMINADO
     }
 
     @Override
@@ -31,7 +29,7 @@ public class Meteor extends MovingObject {
         // Reproducir sonido y agregar puntuacion solo si fue destruido por el jugador
         if (lastHitByPlayer) {
             gameState.addScore(Constants.METEOR_SCORE, position);
-            explosion.play();
+            Assets.explosion.play(); // <- AHORA USA EL ASSET PRECARGADO
         }
 
         // Dividir meteoros

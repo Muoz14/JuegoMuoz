@@ -1,7 +1,6 @@
 package gameObject;
 
 import graphics.Assets;
-import graphics.Sound;
 import math.Vector2D;
 import states.GameState;
 
@@ -18,7 +17,6 @@ public class Ufo extends MovingObject {
     private double swayTime;
 
     private Chronometer fireRate;
-    private Sound shoot;
 
     private long spawnTime = 0;
     private final long LIFE_TIME = 10000;
@@ -34,7 +32,6 @@ public class Ufo extends MovingObject {
         this.fireRate = new Chronometer();
         fireRate.run(Constants.UFO_FIRE_RATE);
 
-        this.shoot = new Sound("/sounds/ufoShoot.wav");
         this.immuneToMeteors = true;
     }
 
@@ -68,7 +65,7 @@ public class Ufo extends MovingObject {
         velocity = velocity.add(pathForce).limit(maxVel);
         position = position.add(velocity);
 
-        // Teletransportación
+        // Teletransportacion
         boolean teleported = false;
         if (position.getX() > Constants.WIDTH) { position.setX(0); teleported = true; }
         if (position.getX() < 0) { position.setX(Constants.WIDTH); teleported = true; }
@@ -96,8 +93,9 @@ public class Ufo extends MovingObject {
 
             gameState.getMovingObjects().add(0, laser);
             fireRate.run(Constants.UFO_FIRE_RATE);
-            shoot.play();
-            shoot.changeVolume(-15.0f);
+
+            Assets.ufoShoot.play();
+            Assets.ufoShoot.changeVolume(-15.0f);
         }
 
         swayTime += 0.05;

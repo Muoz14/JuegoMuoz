@@ -5,10 +5,8 @@ import gameObject.ShipLibrary;
 import graphics.Assets;
 import input.KeyBoard;
 import input.MouseInput;
-import states.GameState;
-import states.MenuState;
+import states.LoadingState;
 import states.State;
-
 import javax.swing.JFrame;
 import java.awt.*;
 import java.awt.image.BufferStrategy;
@@ -39,8 +37,6 @@ public class Window extends JFrame implements Runnable{
 
     //Promedio de FPS
     private int AVERAGEFPS = FPS; //Para saber la cantidad de fps
-
-    private GameState gameState;
 
     private KeyBoard keyBoard;
 
@@ -81,10 +77,11 @@ public class Window extends JFrame implements Runnable{
 
     //Metodo para actualizar objetos en pantalla
     private void update(){
-
         keyBoard.update();
-        State.getCurrentState().update();
 
+        if (State.getCurrentState() != null) {
+            State.getCurrentState().update();
+        }
     }
 
     //Metodo para dibujar objetos en pantalla
@@ -93,10 +90,8 @@ public class Window extends JFrame implements Runnable{
         bs = canvas.getBufferStrategy();
 
         if (bs == null){
-
             canvas.createBufferStrategy(3); //Numeros de Buffers que usa un canvas, y en esta linea se lo asignamos
             return;
-
         }
 
         g = bs.getDrawGraphics();
@@ -108,7 +103,9 @@ public class Window extends JFrame implements Runnable{
         g.fillRect(0, 0, Constants.WIDTH, Constants.HEIGHT);
 
         //Para dibujar objetos desde otras clases
-        State.getCurrentState().draw(g);
+        if (State.getCurrentState() != null) {
+            State.getCurrentState().draw(g);
+        }
 
 
         //Hasta aqui termina
@@ -120,13 +117,8 @@ public class Window extends JFrame implements Runnable{
 
     //Metodo para inicializar los recursos (imagenes y videos)
     private void init(){
-
-        Assets.init();
-
-        ShipLibrary.init();
-
-        State.changeState(new MenuState());
-
+        // Iniciar en el LoadingState para carga asincrona
+        State.changeState(new LoadingState());
     }
 
     //Metodo abstracto
@@ -149,6 +141,15 @@ public class Window extends JFrame implements Runnable{
             delta += (now - lastTime) / TARGETTIME;
             time += (now - lastTime);
             lastTime = now;
+
+            // --- INICIO DE LA SOLUCION ---
+            // Si el juego se atrasa por mas de 5 frames (un lagazo),
+            // no intentes ponerte al dia. Solo corre 1 frame.
+            // Esto previene el "aceleron" despues de un lag.
+            if (delta > 5) {
+                delta = 1;
+            }
+            // --- FIN DE LA SOLUCION ---
 
             if (delta >= 1){
 

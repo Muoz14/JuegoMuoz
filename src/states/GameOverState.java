@@ -2,19 +2,17 @@ package states;
 
 import gameObject.Constants;
 import graphics.Assets;
-import graphics.Sound;
 import input.MouseInput;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import math.Vector2D;
 
 public class GameOverState extends State {
 
     private int score;
     private int wave;
 
-    // Efecto de vibración para el texto "GAME OVER"
+    // Efecto de vibracion para el texto "GAME OVER"
     private long startTime;
     private double shakeAmplitude = 4; // intensidad del temblor
     private double shakeSpeed = 0.1;
@@ -24,8 +22,6 @@ public class GameOverState extends State {
     private Rectangle playAgainButton;
     private Rectangle selectShipButton;
     private Rectangle menuButton;
-
-    private Sound buttonSelected = new Sound("/sounds/ButtonSelected.wav") ;
 
     public GameOverState(int score, int wave) {
         this.score = score;
@@ -54,21 +50,21 @@ public class GameOverState extends State {
 
         // JUGAR DE NUEVO
         if (playAgainButton.contains(mouse) && MouseInput.isPressed()) {
-            buttonSelected.play();
+            Assets.buttonSelected.play();
             State.changeState(new GameState());
             MouseInput.releaseClick();
         }
 
         // ELEGIR NAVE
         if (selectShipButton.contains(mouse) && MouseInput.isPressed()) {
-            buttonSelected.play();
+            Assets.buttonSelected.play();
             State.changeState(new ShipSelectionState());
             MouseInput.releaseClick();
         }
 
         // MENU PRINCIPAL
         if (menuButton.contains(mouse) && MouseInput.isPressed()) {
-            buttonSelected.play();
+            Assets.buttonSelected.play();
             State.changeState(new MenuState());
             MouseInput.releaseClick();
         }
@@ -93,7 +89,7 @@ public class GameOverState extends State {
         int textY = 250 + (int) offsetY;
         g2d.drawString(gameOverText, textX, textY);
 
-        // --- Puntuación y oleada ---
+        // --- Puntuacion y oleada ---
         g2d.setFont(Assets.fontMed);
 
         // PUNTUACION

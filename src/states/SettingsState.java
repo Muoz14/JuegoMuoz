@@ -2,7 +2,6 @@ package states;
 
 import gameObject.Constants;
 import graphics.Assets;
-import graphics.Sound;
 import graphics.SoundManager;
 import input.KeyBoard;
 import input.MouseInput;
@@ -26,7 +25,6 @@ public class SettingsState extends State {
     private State previousState;
     private boolean previousPausedState;
     private GameState gameStateRef;
-    private Sound buttonSelected = new Sound("/sounds/ButtonSelected.wav") ;
 
     public SettingsState(State previousState) {
         this.previousState = previousState;
@@ -81,8 +79,9 @@ public class SettingsState extends State {
     }
 
     private void applyVolumeChange() {
-        if (gameStateRef != null && gameStateRef.getBackgroundMusic() != null) {
-            gameStateRef.getBackgroundMusic().setVolume(SettingsData.getVolume());
+        // (Usamos el Asset estatico ahora)
+        if (gameStateRef != null && Assets.backgroundMusic != null) {
+            Assets.backgroundMusic.setVolume(SettingsData.getVolume());
         }
         SoundManager.getInstance().setGlobalVolume(SettingsData.getVolume());
     }
@@ -117,7 +116,7 @@ public class SettingsState extends State {
                 if (keyButtons.get(dir).contains(mouse) && MouseInput.isPressed()) {
                     waitingForKey = dir;
                     MouseInput.releaseClick();
-                    buttonSelected.play();
+                    Assets.buttonSelected.play();
                 }
             }
         }
@@ -127,7 +126,7 @@ public class SettingsState extends State {
                 gameStateRef.setPaused(previousPausedState);
                 SoundManager.getInstance().resumeAll();
             }
-            buttonSelected.play();
+            Assets.buttonSelected.play();
             State.changeState(previousState);
             MouseInput.releaseClick();
         }

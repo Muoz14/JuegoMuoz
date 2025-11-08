@@ -1,7 +1,6 @@
 package gameObject;
 
 import graphics.Assets;
-import graphics.Sound;
 import math.Vector2D;
 import states.GameState;
 
@@ -10,24 +9,21 @@ import java.awt.geom.AffineTransform;
 
 public class MiniBoss extends MovingObject {
 
-    private int hitsTaken;               // Cantidad de impactos recibidos del jugador
+    private int hitsTaken;
     private int maxHits;
-    private long lastShotTime;           // Control de disparo
-    private static final long FIRE_RATE = 1200; // milisegundos entre disparos
-    private Sound shootSound;            // Sonido de disparo
+    private long lastShotTime;
+    private static final long FIRE_RATE = 1200;
 
     // Variables para el nuevo movimiento
-    private Vector2D targetVelocity;     // Velocidad deseada
-    private long lastMoveChangeTime;     // Cuando cambio de direccion por ultima vez
-    private long moveChangeInterval = 2000; // Cambia de objetivo cada 2 segundos (2000 ms)
+    private Vector2D targetVelocity;
+    private long lastMoveChangeTime;
+    private long moveChangeInterval = 2000;
 
-    // --- SOLUCION: El constructor ahora recibe la vida maxima ---
     public MiniBoss(Vector2D position, GameState gameState, int maxHits) {
         super(position, new Vector2D(0, 0), 2.5, Assets.miniBoss, gameState);
         this.hitsTaken = 0;
-        this.shootSound = new Sound("/sounds/ufoShoot.wav");
         this.immuneToMeteors = true;
-        this.maxHits = maxHits; // Se asigna la vida (12 o 30)
+        this.maxHits = maxHits;
         this.lastMoveChangeTime = System.currentTimeMillis();
         this.targetVelocity = new Vector2D();
     }
@@ -38,7 +34,7 @@ public class MiniBoss extends MovingObject {
         updateMovement();
 
         // Aplicar movimiento y limites de pantalla
-        velocity = velocity.add(targetVelocity.subtract(velocity).scale(0.1)); // Suavizado
+        velocity = velocity.add(targetVelocity.subtract(velocity).scale(0.1));
         velocity = velocity.limit(maxVel);
         position = position.add(velocity);
 
@@ -46,8 +42,8 @@ public class MiniBoss extends MovingObject {
         handleScreenLimits();
 
         // Disparo y colisiones
-        shootAtPlayer();     // Disparo hacia jugador
-        collidesWithLasers(); // Detecta solo colisiones con laseres del jugador
+        shootAtPlayer();
+        collidesWithLasers();
     }
 
     // Nuevo metodo de movimiento
@@ -55,10 +51,8 @@ public class MiniBoss extends MovingObject {
         long now = System.currentTimeMillis();
         Player player = gameState.getPlayer();
 
-        // Si el jugador no existe, se mueve erraticamente
         if (player == null || player.isDead()) {
             if (now - lastMoveChangeTime > moveChangeInterval) {
-                // Direccion aleatoria
                 double randomAngle = Math.random() * 2 * Math.PI;
                 targetVelocity = new Vector2D(Math.cos(randomAngle), Math.sin(randomAngle)).scale(maxVel);
                 lastMoveChangeTime = now;
@@ -66,17 +60,13 @@ public class MiniBoss extends MovingObject {
             return;
         }
 
-        // Si el jugador existe, decide si perseguirlo o moverse aleatoriamente
         if (now - lastMoveChangeTime > moveChangeInterval) {
             lastMoveChangeTime = now;
 
-            // 50% de probabilidad de ir hacia el jugador, 50% de moverse aleatorio
             if (Math.random() < 0.5) {
-                // Perseguir al jugador
                 Vector2D toPlayer = player.getCenter().subtract(getCenter()).normalize();
                 targetVelocity = toPlayer.scale(maxVel);
             } else {
-                // Direccion aleatoria
                 double randomAngle = Math.random() * 2 * Math.PI;
                 targetVelocity = new Vector2D(Math.cos(randomAngle), Math.sin(randomAngle)).scale(maxVel);
             }
@@ -107,10 +97,8 @@ public class MiniBoss extends MovingObject {
             bounced = true;
         }
 
-        // Si rebota, forzamos un cambio de direccion
         if (bounced) {
             lastMoveChangeTime = System.currentTimeMillis();
-            // Direccion aleatoria al rebotar
             double randomAngle = Math.random() * 2 * Math.PI;
             targetVelocity = new Vector2D(Math.cos(randomAngle), Math.sin(randomAngle)).scale(maxVel);
         }
@@ -134,11 +122,11 @@ public class MiniBoss extends MovingObject {
                 Math.atan2(toPlayer.getY(), toPlayer.getX()) + Math.PI / 2,
                 Assets.laserPersonalizado1,
                 gameState,
-                false // laser enemigo
+                false
         );
 
         gameState.addObject(laser);
-        shootSound.play();
+        Assets.ufoShoot.play(); // <- AHORA USA EL ASSET PRECARGADO
         lastShotTime = now;
     }
 
@@ -148,19 +136,16 @@ public class MiniBoss extends MovingObject {
             if (obj instanceof Laser) {
                 Laser laser = (Laser) obj;
 
-                // Solo afecta si el laser es del jugador
                 if (laser.isPlayerLaser() && this.collides(laser)) {
-                    laser.Destroy();   // Destruye el laser
+                    laser.Destroy();
                     hitsTaken++;
 
-                    // Explosion pequena en cada impacto
                     gameState.playExplosion(getCenter());
 
-                    // --- SOLUCION: Usar la variable 'maxHits' ---
                     if (hitsTaken >= this.maxHits) {
                         lastHitByPlayer = true;
-                        Destroy(); // <- AQUI SE LLAMAN LOS MENSAJES
-                        gameState.playExplosion(getCenter()); // Explosion final
+                        Destroy();
+                        gameState.playExplosion(getCenter());
                         gameState.addScore(500, getCenter());
                         return;
                     }
@@ -173,39 +158,37 @@ public class MiniBoss extends MovingObject {
     protected void Destroy() {
         // Solo se destruye si fue eliminado por el jugador
         if (lastHitByPlayer) {
-            Sound explosionSound = new Sound("/sounds/explosion.wav");
-            explosionSound.play();
+            Assets.explosion.play(); // <- AHORA USA EL ASSET PRECARGADO
 
             // 1. Mensaje principal
             Message bossDeadMsg = new Message(
                     new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2),
-                    false, // fade
+                    false,
                     "MINI JEFE ANIQUILADO",
-                    Color.CYAN, // Un color victorioso
-                    true, // centered
+                    Color.CYAN,
+                    true,
                     Assets.fontBig,
                     gameState
             );
-            bossDeadMsg.setLifespan(3000); // 3 segundos
+            bossDeadMsg.setLifespan(3000);
             gameState.addMessage(bossDeadMsg);
 
             // 2. Mensaje secundario (usando un Thread para que aparezca despues)
             new Thread(() -> {
                 try {
-                    // Esperar a que el primer mensaje casi desaparezca
                     Thread.sleep(2800);
                 } catch (InterruptedException ignored) {}
 
                 Message cleanupMsg = new Message(
-                        new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2 + 60), // Un poco mas abajo
+                        new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2 + 60),
                         false,
                         "ACABA CON LOS METEORITOS RESTANTES",
                         Color.WHITE,
                         true,
-                        Assets.fontMed, // Fuente mediana
+                        Assets.fontMed,
                         gameState
                 );
-                cleanupMsg.setLifespan(3500); // 3.5 segundos
+                cleanupMsg.setLifespan(3500);
                 gameState.addMessage(cleanupMsg);
             }).start();
         }
@@ -216,16 +199,13 @@ public class MiniBoss extends MovingObject {
     public void draw(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
 
-        // Dibujar la nave sin rotacion
         AffineTransform at = AffineTransform.getTranslateInstance(position.getX(), position.getY());
         g2d.drawImage(texture, at, null);
 
-        // Barra de vida
-        // --- SOLUCION: Usar la variable 'maxHits' ---
         double lifePercent = (double) (this.maxHits - hitsTaken) / this.maxHits;
         int barWidth = width;
         int barHeight = 6;
-        int barYOffset = 10; // Distancia de la barra sobre el boss
+        int barYOffset = 10;
 
         g.setColor(Color.RED);
         g.fillRect((int) position.getX(), (int) position.getY() - barYOffset, barWidth, barHeight);

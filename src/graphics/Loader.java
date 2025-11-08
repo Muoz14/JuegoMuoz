@@ -11,7 +11,7 @@ import java.io.IOException;
 
 public class Loader {
 
-    // Objeto para cargar imágenes
+    // Objeto para cargar imagenes
     public static BufferedImage ImageLoader(String path) {
         try {
             return ImageIO.read(Loader.class.getResource(path));
@@ -31,17 +31,4 @@ public class Loader {
         }
     }
 
-    public static Clip loadSound(String path) {
-        try {
-            Clip clip = AudioSystem.getClip();
-            clip.open(AudioSystem.getAudioInputStream(Loader.class.getResource(path)));
-            return clip;
-        } catch (LineUnavailableException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (UnsupportedAudioFileException e) {
-            throw new RuntimeException(e);
-        }
-    }
 }

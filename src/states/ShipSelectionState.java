@@ -3,7 +3,6 @@ package states;
 import gameObject.ShipLibrary;
 import gameObject.ShipData;
 import graphics.Assets;
-import graphics.Sound;
 import input.KeyBoard;
 import ui.Action;
 import ui.Button;
@@ -39,8 +38,6 @@ public class ShipSelectionState extends State {
     private boolean upPressedLastFrame = false;
     private boolean downPressedLastFrame = false;
 
-    private Sound buttonSelected = new Sound("/sounds/ButtonSelected.wav") ;
-
     public ShipSelectionState() {
 
         buttons = new ArrayList<>();
@@ -48,32 +45,30 @@ public class ShipSelectionState extends State {
         int buttonWidth = Assets.buttonS1.getWidth();
         int buttonHeight = Assets.buttonS1.getHeight();
 
-        // Posición base de botones
+        // Posicion base de botones
         int baseY = Constants.HEIGHT - 150;
         int startX = Constants.WIDTH / 2 - 320;
-        int spacing = 350; // separación de botones
+        int spacing = 350; // separacion de botones
 
-        // 🔹 Botón “CONFIRMAR”
+        // Boton “CONFIRMAR”
         buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, startX, baseY,
                 "CONFIRMAR", new Action() {
             @Override
             public void doAction() {
-                buttonSelected.play();
+                Assets.buttonSelected.play();
                 ShipLibrary.setSelectedShip(selectedShipIndex);
                 ShipLibrary.setSelectedLaser(selectedLaserIndex);
                 State.changeState(new GameState());
             }
         }));
 
-        // Botón “VOLVER”
+        // Boton “VOLVER”
         buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, startX + spacing, baseY,
                 "VOLVER", new Action() {
             @Override
             public void doAction() {
-
-                buttonSelected.play();
+                Assets.buttonSelected.play();
                 State.changeState(new MenuState());
-
             }
         }));
     }
@@ -102,10 +97,10 @@ public class ShipSelectionState extends State {
             rightPressedLastFrame = false;
         }
 
-        // Navegar entre láseres con W/S
+        // Navegar entre laseres con W/S
         if (KeyBoard.W && !upPressedLastFrame) {
             selectedLaserIndex--;
-            if (selectedLaserIndex < 0) selectedLaserIndex = 1; // ajusta si agregas más tipos de laser
+            if (selectedLaserIndex < 0) selectedLaserIndex = 1; // ajusta si agregas mas tipos de laser
             upPressedLastFrame = true;
         } else if (!KeyBoard.W) {
             upPressedLastFrame = false;
@@ -124,7 +119,7 @@ public class ShipSelectionState extends State {
     public void draw(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
 
-        int shipPreviewWidth = 110;   // ancho deseado de la nave (ajústalo a gusto)
+        int shipPreviewWidth = 110;   // ancho deseado de la nave (ajustalo a gusto)
         int shipPreviewHeight = 100;  // alto deseado
 
         int shipX = Constants.WIDTH / 2 - shipPreviewWidth / 2 + shipOffsetX;
@@ -145,7 +140,7 @@ public class ShipSelectionState extends State {
         BufferedImage shipImage = currentShip.getTexture();
         g2d.drawImage(shipImage, shipX, shipY, shipPreviewWidth, shipPreviewHeight, null);
 
-        // Dibujar el láser según selección actual
+        // Dibujar el laser segun seleccion actual
         BufferedImage laserImage;
         switch (selectedLaserIndex) {
             case 0:
@@ -165,13 +160,13 @@ public class ShipSelectionState extends State {
 
         // Coordenadas base (centrado en pantalla)
         int laserBaseX = Constants.WIDTH / 2 - laserPreviewWidth / 2;
-        int laserBaseY = 400; // posición base vertical
+        int laserBaseY = 400; // posicion base vertical
 
         // Aplicar offsets manuales
         int laserX = laserBaseX + laserOffsetX;
         int laserY = laserBaseY + laserOffsetY;
 
-        // Dibujar preview del láser
+        // Dibujar preview del laser
         g2d.drawImage(
                 laserImage,
                 laserX,

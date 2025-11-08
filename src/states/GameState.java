@@ -36,8 +36,6 @@ public class GameState extends State {
     private long waveClearTime = 0;
     private boolean nextWaveStarting = false;
 
-    private static Sound backgroundMusic; // STATIC para evitar duplicados
-
     private boolean paused = false;
     private boolean startingCountdown = true;
     private long countdownStartTime;
@@ -69,9 +67,6 @@ public class GameState extends State {
     private BufferedImage resumeButtonHoverImg;
     private BufferedImage settingsButtonHoverImg;
     private BufferedImage menuButtonHoverImg;
-
-    private Sound buttonSelected = new Sound("/sounds/ButtonSelected.wav") ;
-    private Sound gameOver = new Sound("/sounds/GameOver.wav");
 
     public GameState() {
 
@@ -106,16 +101,15 @@ public class GameState extends State {
         startCountdown(); // <--- Metodo de countdown
 
         // Musica de fondo unica
-        if (backgroundMusic != null) {
-            backgroundMusic.stop();
-            backgroundMusic = null;
+        // Detener musica anterior si existia
+        if (Assets.backgroundMusic != null) {
+            Assets.backgroundMusic.stop();
         }
 
-        backgroundMusic = new Sound("/sounds/backgroundMusic.wav", true);
-        backgroundMusic.setMusic(true);
-        backgroundMusic.setVolume(SettingsData.getVolume());
-        SoundManager.getInstance().registerSound(backgroundMusic);
-        backgroundMusic.play();
+        // (El SoundManager ya deberia tener registrado 'backgroundMusic' desde Assets.init())
+        // (Pero re-ajustamos el volumen por si acaso)
+        Assets.backgroundMusic.setVolume(SettingsData.getVolume());
+        Assets.backgroundMusic.play();
     }
 
     // ------------------ Countdown ------------------
@@ -241,7 +235,7 @@ public class GameState extends State {
 
         // Pausa con boton
         if (pauseButtonBounds.contains(mouse) && MouseInput.isPressed()) {
-            buttonSelected.play();
+            Assets.buttonSelected.play();
             paused = true;
             showPauseMenu = true;
             MouseInput.releaseClick();
@@ -320,7 +314,7 @@ public class GameState extends State {
         if (resumeButtonBounds.contains(mouse) && MouseInput.isPressed()) {
             paused = false;
             showPauseMenu = false;
-            buttonSelected.play();
+            Assets.buttonSelected.play();
             startCountdown();
             resumeMusic();
             SoundManager.getInstance().resumeAll();
@@ -328,13 +322,13 @@ public class GameState extends State {
         }
 
         if (settingsButtonBounds.contains(mouse) && MouseInput.isPressed()) {
-            buttonSelected.play();
+            Assets.buttonSelected.play();
             State.changeState(new SettingsState(this));
             MouseInput.releaseClick();
         }
 
         if (menuButtonBounds.contains(mouse) && MouseInput.isPressed()) {
-            buttonSelected.play();
+            Assets.buttonSelected.play();
             stopMusic();
             State.changeState(new MenuState());
             MouseInput.releaseClick();
@@ -356,7 +350,6 @@ public class GameState extends State {
         }
 
         // 2. Revisar si la oleada normal termino
-        // (Ni meteoros, NI boss, y no estamos ya en una transicion)
         if (!hayMeteoros && !hayMiniBoss && firstWaveStarted && !waveCleared && !nextWaveStarting) {
             waveCleared = true;
             waveClearTime = System.currentTimeMillis();
@@ -373,19 +366,17 @@ public class GameState extends State {
             completeMsg.setLifespan(3000);
             addMessage(completeMsg);
         }
-        // 3. NUEVO CASO: Meteoros despejados, PERO el boss SIGUE VIVO
+        // 3.Meteoros despejados, PERO el boss SIGUE VIVO
         else if (!hayMeteoros && hayMiniBoss && firstWaveStarted && !waveCleared && !nextWaveStarting) {
-            // Llamar refuerzos!
-            nextWaveStarting = true; // Usamos esta bandera para evitar que se llame 60 veces por seg
-            spawnMeteorSubWave(waves); // Spawnea 'waves' meteoros
+            nextWaveStarting = true;
+            spawnMeteorSubWave(waves);
         }
 
 
         // 4. Este bloque maneja la transicion a la SIGUIENTE oleada
-        // (Solo se activa cuando waveCleared es true, o sea, cuando el CASO 1 ocurre)
         if (waveCleared && !nextWaveStarting) {
             long elapsed = System.currentTimeMillis() - waveClearTime;
-            if (elapsed >= 3000) { // Espera 3s despues de "OLEADA COMPLETADA"
+            if (elapsed >= 3000) {
                 waveCleared = false;
                 nextWaveStarting = true;
                 waves++;
@@ -407,26 +398,24 @@ public class GameState extends State {
                     try {
                         Thread.sleep(3000);
                     } catch (InterruptedException ignored) {}
-                    startWave(); // Inicia la oleada de meteoros
+                    startWave();
                     nextWaveStarting = false;
 
-                    // Aparicion del MiniBoss cada 2 oleadas
-                    if (waves % 2 == 0) {
+                    // Aparicion del MiniBoss cada 3 oleadas
+                    if (waves % 3 == 0) {
                         try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
 
-                        // Determinar vida del jefe segun la nave seleccionada
                         ShipData selectedShip = ShipLibrary.getSelectedShip();
                         int numCannons = selectedShip.getGunOffsets().size();
 
                         int bossHealth;
                         if (numCannons >= 2) {
-                            bossHealth = 30; // Nave de 2+ canones
+                            bossHealth = 30;
                         } else {
-                            bossHealth = 10; // Nave de 1 canon
+                            bossHealth = 12; // Modificado de 10 a 12
                         }
 
                         Vector2D bossPos = new Vector2D(Constants.WIDTH / 2 - 100, 100);
-                        // Pasar la vida al constructor
                         MiniBoss boss = new MiniBoss(bossPos, this, bossHealth);
                         addObject(boss);
 
@@ -455,9 +444,9 @@ public class GameState extends State {
                 new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2 + 60),
                 false,
                 "REFUERZOS DETECTADOS!",
-                Color.ORANGE, // Color diferente
+                Color.ORANGE,
                 true,
-                Assets.fontMed, // Fuente mas pequena
+                Assets.fontMed,
                 this
         );
         subWaveMsg.setLifespan(2500);
@@ -465,9 +454,7 @@ public class GameState extends State {
 
         new Thread(() -> {
             try {
-                // Spawnea 'count' meteoros, uno por uno
                 for (int i = 0; i < count; i++) {
-                    // Logica de spawn de 1 meteoro (copiada de startWave)
                     double x = i % 2 == 0 ? Math.random() * Constants.WIDTH : 0;
                     double y = i % 2 == 0 ? 0 : Math.random() * Constants.HEIGHT;
                     Vector2D velocity = new Vector2D(Math.random() * 2 - 1, Math.random() * 2 - 1).normalize().scale(2);
@@ -481,15 +468,13 @@ public class GameState extends State {
                             Size.BIG,
                             family
                     );
-                    addObject(meteor); // addObject es thread-safe (agrega a objectsToAdd)
+                    addObject(meteor);
 
-                    // Esperar 1 segundo antes de spawnear el siguiente
                     Thread.sleep(1000);
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } finally {
-                // Liberar el bloqueo para que el juego continue
                 nextWaveStarting = false;
             }
         }).start();
@@ -590,19 +575,18 @@ public class GameState extends State {
 
     // ------------------ Musica ------------------
     public void pauseMusic() {
-        if (backgroundMusic != null)
-            backgroundMusic.pause();
+        if (Assets.backgroundMusic != null)
+            Assets.backgroundMusic.pause();
     }
 
     public void resumeMusic() {
-        if (backgroundMusic != null && !backgroundMusic.isPlaying())
-            backgroundMusic.resume();
+        if (Assets.backgroundMusic != null && !Assets.backgroundMusic.isPlaying())
+            Assets.backgroundMusic.resume();
     }
 
     public void stopMusic() {
-        if (backgroundMusic != null) {
-            backgroundMusic.stop();
-            backgroundMusic = null;
+        if (Assets.backgroundMusic != null) {
+            Assets.backgroundMusic.stop();
         }
     }
 
@@ -616,7 +600,7 @@ public class GameState extends State {
         if (lives <= 0) {
             stopMusic();
             State.changeState(new GameOverState(score, waves));
-            gameOver.play();
+            Assets.gameOver.play();
         }
     }
 
@@ -645,7 +629,7 @@ public class GameState extends State {
     }
 
     public Sound getBackgroundMusic() {
-        return backgroundMusic;
+        return Assets.backgroundMusic;
     }
 
     public boolean isPaused() {

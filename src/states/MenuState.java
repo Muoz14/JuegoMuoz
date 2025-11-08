@@ -2,7 +2,6 @@ package states;
 
 import gameObject.*;
 import graphics.Assets;
-import graphics.Sound;
 import input.MouseInput;
 import math.Vector2D;
 import ui.Action;
@@ -18,9 +17,6 @@ public class MenuState extends State {
     private ArrayList<MenuMeteor> meteors;
     private ArrayList<MenuExplosion> explosions;
 
-    private Sound explosion = new Sound("/sounds/explosion.wav") ;
-    private Sound buttonSelected = new Sound("/sounds/ButtonSelected.wav") ;
-
     public MenuState() {
         buttons = new ArrayList<>();
         meteors = new ArrayList<>();
@@ -34,58 +30,58 @@ public class MenuState extends State {
         final int TOTAL_GROUP_HEIGHT = 5 * buttonHeight + 4 * SPACING;
         final int START_Y = Constants.HEIGHT / 2 - TOTAL_GROUP_HEIGHT / 2;
 
-        // Botón JUGAR
+        // Boton JUGAR
         buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y, Constants.PLAY, new Action() {
             @Override
             public void doAction() {
-                buttonSelected.play();
+                Assets.buttonSelected.play();
                 State.changeState(new GameState());
             }
         }));
 
-        // Botón PUNTUACIONES
+        // Boton PUNTUACIONES
         buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y + 1 * (buttonHeight + SPACING), Constants.SCORE, new Action() {
             @Override
             public void doAction() {
-                buttonSelected.play();
+                Assets.buttonSelected.play();
                 System.out.println("ABRIR PUNTUACIONES");
             }
         }));
 
-        // Botón INGRESAR NOMBRE
+        // Boton INGRESAR NOMBRE
         buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y + 2 * (buttonHeight + SPACING), Constants.NAME, new Action() {
             @Override
             public void doAction() {
-                buttonSelected.play();
+                Assets.buttonSelected.play();
                 System.out.println("ABRIR NOMBRE");
             }
         }));
 
-        // Botón NAVES
+        // Boton NAVES
         buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y + 3 * (buttonHeight + SPACING), Constants.SHIP, new Action() {
             @Override
             public void doAction() {
-                buttonSelected.play();
+                Assets.buttonSelected.play();
                 State.changeState(new ShipSelectionState());
             }
         }));
 
-        // Botón AJUSTES
+        // Boton AJUSTES
         buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y + 4 * (buttonHeight + SPACING), Constants.SETTINGS, new Action() {
             @Override
             public void doAction() {
-                buttonSelected.play();
+                Assets.buttonSelected.play();
                 State.changeState(new SettingsState(MenuState.this));
             }
         }));
 
-        // Botón SALIR
+        // Boton SALIR
         final int MARGIN_X = 25;
         final int MARGIN_Y = 45;
         buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, Constants.WIDTH - buttonWidth - MARGIN_X, Constants.HEIGHT - buttonHeight - MARGIN_Y, Constants.EXIT, new Action() {
             @Override
             public void doAction() {
-                buttonSelected.play();
+                Assets.buttonSelected.play();
                 System.exit(0);
             }
         }));
@@ -138,10 +134,10 @@ public class MenuState extends State {
             // Destruir meteorito con clic izquierdo
             Rectangle bounds = new Rectangle((int) m.getPosition().getX(), (int) m.getPosition().getY(), m.getTexture().getWidth(), m.getTexture().getHeight());
             if (MouseInput.isPressed() && bounds.contains(MouseInput.getMousePosition())) {
-                // Añadir explosión
+                // Anadir explosion
                 newExplosions.add(new MenuExplosion(m.getCenter()));
 
-                explosion.play();
+                Assets.explosion.play();
 
                 // Dividir meteorito si no es TINY
                 newMeteors.addAll(m.split());
@@ -150,7 +146,7 @@ public class MenuState extends State {
             }
         }
 
-        // Agregar meteoritos nuevos después del bucle
+        // Agregar meteoritos nuevos despues del bucle
         meteors.addAll(newMeteors);
         explosions.addAll(newExplosions);
 
@@ -164,7 +160,7 @@ public class MenuState extends State {
             }
         }
 
-        // Mantener meteoritos mínimos
+        // Mantener meteoritos minimos
         while (meteors.size() < 5) {
             addRandomMeteor();
         }
@@ -200,10 +196,9 @@ public class MenuState extends State {
 
         @Override
         protected void Destroy() {
-            // No usar gameState
         }
 
-        // Dividir meteorito en meteoritos más pequeños
+        // Dividir meteorito en meteoritos mas pequenos
         public ArrayList<MenuMeteor> split() {
             ArrayList<MenuMeteor> result = new ArrayList<>();
             Size nextSize = size.getNextSize();
@@ -226,7 +221,6 @@ public class MenuState extends State {
 
         @Override
         protected void Destroy() {
-            // No usar gameState
         }
 
         public boolean isRunning() {

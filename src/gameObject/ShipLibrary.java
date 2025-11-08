@@ -107,7 +107,6 @@ public class ShipLibrary {
         switch (selectedLaser) {
             case 0: return Assets.laserPersonalizado1;
             case 1: return Assets.laserPersonalizado2;
-            // ... más tipos si quieres
             default: return Assets.laserPersonalizado1;
         }
     }

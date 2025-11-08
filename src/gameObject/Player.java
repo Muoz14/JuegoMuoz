@@ -1,8 +1,6 @@
 package gameObject;
 
 import graphics.Assets;
-import graphics.Sound;
-import graphics.SoundManager;
 import input.KeyBoard;
 import math.Vector2D;
 import states.GameState;
@@ -24,10 +22,9 @@ public class Player extends MovingObject {
     private ShipData data;
     private BufferedImage laserTexture;
 
-    private Sound shoot, loose;
     private AffineTransform at;
 
-    // Reaparición
+    // Reaparicion
     private boolean spawning = false;
     private boolean dead = false;
     private boolean visible = true;
@@ -45,16 +42,11 @@ public class Player extends MovingObject {
         spawnTime = new Chronometer();
         flickerTime = new Chronometer();
 
-        // Sonidos
-        shoot = new Sound("/sounds/playerShoot.wav");
-        loose = new Sound("/sounds/playerLoose1.wav");
-        SoundManager.getInstance().registerSound(shoot);
-        SoundManager.getInstance().registerSound(loose);
-
+        // APLICAMOS LA LOGICA DE VOLUMEN A LOS ASSETS ESTATICOS
         float initialSFXVolume = SettingsData.getVolume() * 1.2f;
         if (initialSFXVolume > 1f) initialSFXVolume = 1f;
-        shoot.setVolume(initialSFXVolume);
-        loose.setVolume(SettingsData.getVolume());
+        Assets.playerShoot.setVolume(initialSFXVolume);
+        Assets.playerLoose.setVolume(SettingsData.getVolume());
     }
 
     @Override
@@ -82,13 +74,13 @@ public class Player extends MovingObject {
 
             float sfxVolume = SettingsData.getVolume() * 1.2f;
             if (sfxVolume > 1f) sfxVolume = 1f;
-            shoot.setVolume(sfxVolume);
-            shoot.play();
+            Assets.playerShoot.setVolume(sfxVolume);
+            Assets.playerShoot.play();
         }
 
-        if (shoot.getFramePosition() > 15500) shoot.stop();
+        if (Assets.playerShoot.getFramePosition() > 15500) Assets.playerShoot.stop();
 
-        // Rotación
+        // Rotacion
         if (KeyBoard.RIGTH()) angle += Constants.DELTAANGLE;
         if (KeyBoard.LEFT()) angle -= Constants.DELTAANGLE;
 
@@ -123,9 +115,10 @@ public class Player extends MovingObject {
         if (!dead) {
             dead = true;
             visible = false;
-            loose.play();
-            loose.changeVolume(-2.0f);
-            gameState.subtractScore(80, getCenter()); // Penalización
+            Assets.playerLoose.play();
+            Assets.playerLoose.changeVolume(-2.0f);
+
+            gameState.subtractScore(80, getCenter()); // Penalizacion
             resetValues();
         }
     }
@@ -161,7 +154,7 @@ public class Player extends MovingObject {
         g2d.drawImage(texture, at, null);
     }
 
-    // ------------------ Métodos auxiliares ------------------
+    // ------------------ Metodos auxiliares ------------------
     public boolean isSpawning() { return spawning; }
     public boolean isDead() { return dead; }
 
