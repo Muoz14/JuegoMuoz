@@ -26,7 +26,7 @@ public class GameState extends State {
 
     public int meteors;
     private int waves = 1;
-    private int lives = 3;
+    private int lives = 100;
 
     // Puntuaciones
     private int score = 0;
@@ -45,17 +45,17 @@ public class GameState extends State {
     private boolean firstWaveStarted = false;
     private boolean escPressedLastFrame = false;
 
-    // Aparición del UFO
+    // Aparicion del UFO
     private long lastUfoSpawnTime = 0;
     private static final long UFO_SPAWN_INTERVAL = 15000;
 
-    // Botón pausa
+    // Boton pausa
     private BufferedImage pauseButtonImg;
     private Rectangle pauseButtonBounds;
     private int pauseButtonOffsetX = 20;
     private int pauseButtonOffsetY = 20;
 
-    // Menú de pausa
+    // Menu de pausa
     private Rectangle resumeButtonBounds;
     private Rectangle settingsButtonBounds;
     private Rectangle menuButtonBounds;
@@ -83,13 +83,13 @@ public class GameState extends State {
 
         meteors = 1;
 
-        // Botón pausa
+        // Boton pausa
         pauseButtonImg = Assets.buttonPause;
         int buttonWidth = pauseButtonImg.getWidth();
         int buttonHeight = pauseButtonImg.getHeight();
         pauseButtonBounds = new Rectangle(pauseButtonOffsetX, pauseButtonOffsetY, buttonWidth, buttonHeight);
 
-        // Botones menú de pausa
+        // Botones menu de pausa
         resumeButtonImg = Assets.buttonS1;
         settingsButtonImg = Assets.buttonS1;
         menuButtonImg = Assets.buttonS1;
@@ -105,7 +105,7 @@ public class GameState extends State {
 
         startCountdown(); // <--- Metodo de countdown
 
-        // Música de fondo única
+        // Musica de fondo unica
         if (backgroundMusic != null) {
             backgroundMusic.stop();
             backgroundMusic = null;
@@ -239,7 +239,7 @@ public class GameState extends State {
             if (!anim.isRunning()) explosion.remove(i);
         }
 
-        // Pausa con botón
+        // Pausa con boton
         if (pauseButtonBounds.contains(mouse) && MouseInput.isPressed()) {
             buttonSelected.play();
             paused = true;
@@ -281,7 +281,7 @@ public class GameState extends State {
             movingObjects.get(i).update();
         }
 
-        // Reaparición del player
+        // Reaparicion del player
         if (player.isDead() && !player.isSpawning()) {
             player.startRespawn();
         }
@@ -296,7 +296,7 @@ public class GameState extends State {
             if (msg.isExpired(currentTime)) messagesToRemove.add(msg);
         }
 
-        // Aplicar añadidos y removidos
+        // Aplicar anadidos y removidos
         if (!objectsToAdd.isEmpty()) {
             movingObjects.addAll(objectsToAdd);
             objectsToAdd.clear();
@@ -343,21 +343,28 @@ public class GameState extends State {
 
     private void handleWaveLogic() {
         boolean hayMeteoros = false;
+        boolean hayMiniBoss = false; // Nuevo chequeo
+
+        // 1. Contar enemigos
         for (MovingObject obj : movingObjects) {
             if (obj instanceof Meteor) {
                 hayMeteoros = true;
-                break;
+            }
+            if (obj instanceof MiniBoss) {
+                hayMiniBoss = true;
             }
         }
 
-        if (!hayMeteoros && firstWaveStarted && !waveCleared && !nextWaveStarting) {
+        // 2. Revisar si la oleada normal termino
+        // (Ni meteoros, NI boss, y no estamos ya en una transicion)
+        if (!hayMeteoros && !hayMiniBoss && firstWaveStarted && !waveCleared && !nextWaveStarting) {
             waveCleared = true;
             waveClearTime = System.currentTimeMillis();
 
             Message completeMsg = new Message(
                     new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2),
                     false,
-                    "¡OLEADA COMPLETADA!",
+                    "OLEADA COMPLETADA!",
                     Color.WHITE,
                     true,
                     Assets.fontBig,
@@ -366,10 +373,19 @@ public class GameState extends State {
             completeMsg.setLifespan(3000);
             addMessage(completeMsg);
         }
+        // 3. NUEVO CASO: Meteoros despejados, PERO el boss SIGUE VIVO
+        else if (!hayMeteoros && hayMiniBoss && firstWaveStarted && !waveCleared && !nextWaveStarting) {
+            // Llamar refuerzos!
+            nextWaveStarting = true; // Usamos esta bandera para evitar que se llame 60 veces por seg
+            spawnMeteorSubWave(waves); // Spawnea 'waves' meteoros
+        }
 
+
+        // 4. Este bloque maneja la transicion a la SIGUIENTE oleada
+        // (Solo se activa cuando waveCleared es true, o sea, cuando el CASO 1 ocurre)
         if (waveCleared && !nextWaveStarting) {
             long elapsed = System.currentTimeMillis() - waveClearTime;
-            if (elapsed >= 3000) {
+            if (elapsed >= 3000) { // Espera 3s despues de "OLEADA COMPLETADA"
                 waveCleared = false;
                 nextWaveStarting = true;
                 waves++;
@@ -378,7 +394,7 @@ public class GameState extends State {
                 Message waveMessage = new Message(
                         new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2),
                         false,
-                        "¡OLEADA " + waves + "!",
+                        "OLEADA " + waves + "!",
                         Color.WHITE,
                         true,
                         Assets.fontBig,
@@ -391,12 +407,95 @@ public class GameState extends State {
                     try {
                         Thread.sleep(3000);
                     } catch (InterruptedException ignored) {}
-                    startWave();
+                    startWave(); // Inicia la oleada de meteoros
                     nextWaveStarting = false;
+
+                    // Aparicion del MiniBoss cada 2 oleadas
+                    if (waves % 2 == 0) {
+                        try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+
+                        // Determinar vida del jefe segun la nave seleccionada
+                        ShipData selectedShip = ShipLibrary.getSelectedShip();
+                        int numCannons = selectedShip.getGunOffsets().size();
+
+                        int bossHealth;
+                        if (numCannons >= 2) {
+                            bossHealth = 30; // Nave de 2+ canones
+                        } else {
+                            bossHealth = 10; // Nave de 1 canon
+                        }
+
+                        Vector2D bossPos = new Vector2D(Constants.WIDTH / 2 - 100, 100);
+                        // Pasar la vida al constructor
+                        MiniBoss boss = new MiniBoss(bossPos, this, bossHealth);
+                        addObject(boss);
+
+
+                        Message bossMsg = new Message(
+                                new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2 - 100),
+                                false,
+                                "MINI JEFE DETECTADO!",
+                                Color.RED,
+                                true,
+                                Assets.fontBig,
+                                this
+                        );
+                        bossMsg.setLifespan(4000);
+                        addMessage(bossMsg);
+                    }
+
                 }).start();
             }
         }
     }
+
+    // Spawnear sub-oleada de meteoros "poco a poco"
+    private void spawnMeteorSubWave(int count) {
+        Message subWaveMsg = new Message(
+                new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2 + 60),
+                false,
+                "REFUERZOS DETECTADOS!",
+                Color.ORANGE, // Color diferente
+                true,
+                Assets.fontMed, // Fuente mas pequena
+                this
+        );
+        subWaveMsg.setLifespan(2500);
+        addMessage(subWaveMsg);
+
+        new Thread(() -> {
+            try {
+                // Spawnea 'count' meteoros, uno por uno
+                for (int i = 0; i < count; i++) {
+                    // Logica de spawn de 1 meteoro (copiada de startWave)
+                    double x = i % 2 == 0 ? Math.random() * Constants.WIDTH : 0;
+                    double y = i % 2 == 0 ? 0 : Math.random() * Constants.HEIGHT;
+                    Vector2D velocity = new Vector2D(Math.random() * 2 - 1, Math.random() * 2 - 1).normalize().scale(2);
+                    int family = (int) (Math.random() * 3);
+                    Meteor meteor = new Meteor(
+                            new Vector2D(x, y),
+                            velocity,
+                            2,
+                            Assets.bigs[family],
+                            this,
+                            Size.BIG,
+                            family
+                    );
+                    addObject(meteor); // addObject es thread-safe (agrega a objectsToAdd)
+
+                    // Esperar 1 segundo antes de spawnear el siguiente
+                    Thread.sleep(1000);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                // Liberar el bloqueo para que el juego continue
+                nextWaveStarting = false;
+            }
+        }).start();
+    }
+
+
     @Override
     public void draw(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
@@ -422,7 +521,7 @@ public class GameState extends State {
         if (startingCountdown && countdownValue > 0) {
             g.setFont(Assets.fontBig);
             g.setColor(Color.WHITE);
-            String text = "¡" + countdownValue + "!";
+            String text = countdownValue + "!";
             int textWidth = g.getFontMetrics().stringWidth(text);
             g.drawString(text, (Constants.WIDTH - textWidth) / 2, Constants.HEIGHT / 2);
         }
@@ -489,7 +588,7 @@ public class GameState extends State {
         }
     }
 
-    // ------------------ Música ------------------
+    // ------------------ Musica ------------------
     public void pauseMusic() {
         if (backgroundMusic != null)
             backgroundMusic.pause();
@@ -507,7 +606,7 @@ public class GameState extends State {
         }
     }
 
-    // ------------------ Gestión de objetos y mensajes ------------------
+    // ------------------ Gestion de objetos y mensajes ------------------
     public Player getPlayer() {
         return player;
     }
@@ -566,7 +665,7 @@ public class GameState extends State {
         messages.add(new Message(position, true, "+" + value + " puntos", Color.WHITE, false, Assets.fontMed, this));
     }
 
-    // Nuevo metodo para penalización del jugador
+    // Nuevo metodo para penalizacion del jugador
     public void subtractScore(int value, Vector2D position) {
         score -= value;
         if (score < 0) score = 0; // evitar negativos

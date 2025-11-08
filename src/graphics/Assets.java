@@ -58,6 +58,10 @@ public class Assets {
     public static BufferedImage buttonS2;
     public static BufferedImage buttonPause;
 
+    //Jefes
+
+    public static BufferedImage miniBoss;
+
     public static void init(){
 
         player1 = Loader.ImageLoader("/ships/playerShip1_Muoz.png");
@@ -123,6 +127,9 @@ public class Assets {
         buttonSelected = Loader.loadSound("/sounds/ButtonSelected.wav");
         gameOver = Loader.loadSound("/sounds/GameOver.wav");
         hoverSound = Loader.loadSound("/sounds/HoverBSound.wav");
+
+        //Carga de jefes
+        miniBoss = Loader.ImageLoader("/boss/miniBoss.png");
 
     }
 
