@@ -259,58 +259,87 @@ public class Player extends MovingObject {
 
     // --- Metodos de Activacion de Power-ups ---
 
-    // --- ESCUDO (REFACTORIZADO) ---
+    // --- ESCUDO ---
     public void activateShield(PowerUpType type) {
-        // Metodo simple (publico)
         activateShield(type, type.duration);
     }
     public void activateShield(PowerUpType type, long duration) {
-        // Metodo sobrecargado (publico) con duracion custom
+        // --- INICIO DE LA MODIFICACION (Stacking) ---
+        long newTotalDuration = duration;
+        if (isShielded && shieldTimer.isRunning()) {
+            newTotalDuration += shieldTimer.getTimeRemaining();
+        }
+        // --- FIN DE LA MODIFICACION ---
+
         isShielded = true;
-        shieldTimer.run(duration); // Usa la duracion pasada como parametro
-        shieldAnimation = new Animation(
-                Assets.shield_effect, 150, new Vector2D(), true
-        );
+        shieldTimer.run(newTotalDuration); // Usa la duracion (posiblemente sumada)
+
+        if (shieldAnimation == null) { // Solo crear animacion si no existe
+            shieldAnimation = new Animation(
+                    Assets.shield_effect, 150, new Vector2D(), true
+            );
+        }
     }
     public void deactivateShield() {
         isShielded = false;
         shieldTimer.reset();
-        shieldAnimation = null;
+        shieldAnimation = null; // Destruir animacion al desactivar
     }
 
-    // --- DISPARO RAPIDO (REFACTORIZADO) ---
+    // --- DISPARO RAPIDO ---
     public void activateRapidFire(PowerUpType type) {
         activateRapidFire(type, type.duration);
     }
     public void activateRapidFire(PowerUpType type, long duration) {
+        // --- INICIO DE LA MODIFICACION (Stacking) ---
+        long newTotalDuration = duration;
+        if (isRapidFire && rapidFireTimer.isRunning()) {
+            newTotalDuration += rapidFireTimer.getTimeRemaining();
+        }
+        // --- FIN DE LA MODIFICACION ---
+
         isRapidFire = true;
-        rapidFireTimer.run(duration);
+        rapidFireTimer.run(newTotalDuration); // Usa la duracion sumada
     }
     public void deactivateRapidFire() {
         isRapidFire = false;
         rapidFireTimer.reset();
     }
 
-    // --- MULTI-DISPARO (REFACTORIZADO) ---
+    // --- MULTI-DISPARO ---
     public void activateMultiShot(PowerUpType type) {
         activateMultiShot(type, type.duration);
     }
     public void activateMultiShot(PowerUpType type, long duration) {
+        // --- INICIO DE LA MODIFICACION (Stacking) ---
+        long newTotalDuration = duration;
+        if (isMultiShot && multiShotTimer.isRunning()) {
+            newTotalDuration += multiShotTimer.getTimeRemaining();
+        }
+        // --- FIN DE LA MODIFICACION ---
+
         isMultiShot = true;
-        multiShotTimer.run(duration);
+        multiShotTimer.run(newTotalDuration); // Usa la duracion sumada
     }
     public void deactivateMultiShot() {
         isMultiShot = false;
         multiShotTimer.reset();
     }
 
-    // --- PUNTOS DOBLES (REFACTORIZADO) ---
+    // --- PUNTOS DOBLES ---
     public void activateScoreMultiplier(PowerUpType type) {
         activateScoreMultiplier(type, type.duration);
     }
     public void activateScoreMultiplier(PowerUpType type, long duration) {
+        // --- INICIO DE LA MODIFICACION (Stacking) ---
+        long newTotalDuration = duration;
+        if (isScoreMultiplier && scoreMultiplierTimer.isRunning()) {
+            newTotalDuration += scoreMultiplierTimer.getTimeRemaining();
+        }
+        // --- FIN DE LA MODIFICACION ---
+
         isScoreMultiplier = true;
-        scoreMultiplierTimer.run(duration);
+        scoreMultiplierTimer.run(newTotalDuration); // Usa la duracion sumada
     }
     public void deactivateScoreMultiplier() {
         isScoreMultiplier = false;
