@@ -50,9 +50,15 @@ public class GameState extends State {
     private long lastUfoSpawnTime = 0;
     private static final long UFO_SPAWN_INTERVAL = 15000;
 
-    // --- SPAWN DE POWER-UPS ---
-    private Chronometer powerUpSpawnTimer;
-    private static final long POWERUP_SPAWN_INTERVAL = 20000; // 20 segundos
+    // --- SPAWN DE POWER-UPS (LOGICA MODIFICADA) ---
+    private static final long POWERUP_BURST_INTERVAL = 15000; // 15s entre el INICIO de cada rafaga
+    private static final long POWERUP_CHAIN_DELAY = 1500;    // 1.5s entre spawns en una rafaga
+    private static final double POWERUP_THIRD_CHANCE = 0.40; // 40% de un 3er power-up
+    private static final int MAX_POWERUPS_ON_SCREEN = 3;
+
+    private Chronometer burstSpawnTimer; // --- RENOMBRADO --- (antes powerUpSpawnTimer)
+    private Chronometer burstChainTimer; // --- NUEVO --- (Timer para 1.5s)
+    private int burstChainStep = 0;      // --- NUEVO --- (0=idle, 1=espera 2do, 2=espera 3ro)
 
     // Boton pausa
     private BufferedImage pauseButtonImg;
@@ -86,8 +92,11 @@ public class GameState extends State {
         background = new Background();
         meteors = 1;
 
-        powerUpSpawnTimer = new Chronometer();
-        powerUpSpawnTimer.run(POWERUP_SPAWN_INTERVAL); // Inicia el timer
+        // --- MODIFICADO: Inicializar timers de rafaga ---
+        burstSpawnTimer = new Chronometer();
+        burstSpawnTimer.run(POWERUP_BURST_INTERVAL); // Inicia el timer principal
+        burstChainTimer = new Chronometer(); // Timer secundario, no se inicia aun
+        // --- FIN MODIFICADO ---
 
         // Boton pausa
         pauseButtonImg = Assets.buttonPause;
@@ -122,12 +131,14 @@ public class GameState extends State {
 
     // ------------------ Countdown ------------------
     public void startCountdown() {
+        // ... (codigo sin cambios) ...
         startingCountdown = true;
         countdownStartTime = System.currentTimeMillis();
         countdownValue = 3;
     }
 
     private void handleCountdown() {
+        // ... (codigo sin cambios) ...
         long elapsed = System.currentTimeMillis() - countdownStartTime;
         if (elapsed >= 1000) {
             countdownValue--;
@@ -144,6 +155,7 @@ public class GameState extends State {
     }
 
     private void startWave() {
+        // ... (codigo sin cambios) ...
         Message waveMessage = new Message(
                 new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2),
                 false,
@@ -174,6 +186,7 @@ public class GameState extends State {
         }
     }
     public void playExplosion(Vector2D position) {
+        // ... (codigo sin cambios) ...
         explosion.add(new Animation(
                 Assets.exp,
                 110,
@@ -184,6 +197,7 @@ public class GameState extends State {
     }
 
     private void spawnUfo() {
+        // ... (codigo sin cambios) ...
         long now = System.currentTimeMillis();
         if (now - lastUfoSpawnTime < UFO_SPAWN_INTERVAL) return;
 
@@ -230,45 +244,114 @@ public class GameState extends State {
 
     // --- METODOS PARA POWER-UPS ---
 
+    // --- METODO REESCRITO ---
     /**
-     * Revisa si es hora de spawnear un power-up
+     * Gestiona la logica de aparicion de rafagas de power-ups.
+     * Se llama en cada frame desde update().
      */
-    private void spawnPowerUp() {
-        powerUpSpawnTimer.update(); // Actualizar el timer
+    private void updatePowerUpSpawns() {
 
-        if (powerUpSpawnTimer.isFinished()) {
+        // 1. Revisar si es momento de INICIAR una nueva rafaga
+        burstSpawnTimer.update();
+        if (burstSpawnTimer.isFinished() && burstChainStep == 0) {
 
-            // 1. Elegir tipo (Bronce, Plata, Oro)
-            PowerUpType type = selectPowerUpType();
+            // Es hora de intentar el 1er spawn
+            if (trySpawnOnePowerUp()) {
+                // Exito. Empezar la cadena
+                burstChainStep = 1; // Estado: "esperando al 2do"
+                burstChainTimer.run(POWERUP_CHAIN_DELAY); // Iniciar timer de 1.5s
+            }
 
-            // 2. Elegir posicion de spawn (aleatoria en pantalla)
-            double x = Math.random() * (Constants.WIDTH - 100) + 50; // No tan en los bordes
-            double y = Math.random() * (Constants.HEIGHT - 100) + 50;
-            Vector2D position = new Vector2D(x, y);
-
-            // 3. Crear el objeto
-            PowerUp powerUp = new PowerUp(position, type, this);
-
-            // 4. Anadirlo al juego
-            addObject(powerUp);
-
-            // 5. Reiniciar el timer
-            powerUpSpawnTimer.run(POWERUP_SPAWN_INTERVAL);
+            // Reiniciar el timer principal de rafagas (15s)
+            // Lo reiniciamos haya funcionado o no, para que no intente
+            // spawnear cada frame si la pantalla esta llena.
+            burstSpawnTimer.run(POWERUP_BURST_INTERVAL);
         }
+
+        // 2. Revisar si estamos DENTRO de una rafaga (esperando al 2do o 3ro)
+        if (burstChainStep > 0) {
+            burstChainTimer.update();
+
+            if (burstChainTimer.isFinished()) {
+
+                if (burstChainStep == 1) {
+                    // Estaba esperando al 2do
+                    if (trySpawnOnePowerUp()) {
+                        // Exito. Ver si hay un 3ro (40% chance)
+                        if (Math.random() < POWERUP_THIRD_CHANCE) {
+                            burstChainStep = 2; // Estado: "esperando al 3ro"
+                            burstChainTimer.run(POWERUP_CHAIN_DELAY); // Reiniciar timer 1.5s
+                        } else {
+                            burstChainStep = 0; // Se acabo la rafaga
+                        }
+                    } else {
+                        burstChainStep = 0; // No pudo spawnear (pantalla llena), se acabo la rafaga
+                    }
+                }
+
+                else if (burstChainStep == 2) {
+                    // Estaba esperando al 3ro
+                    trySpawnOnePowerUp(); // Intentar spawnear el 3ro (no nos importa si falla)
+                    burstChainStep = 0; // La rafaga SIEMPRE termina aqui
+                }
+            }
+        }
+    }
+
+    /**
+     * Intenta spawnear un unico power-up, respetando el limite en pantalla.
+     * @return true si el power-up se anadio, false si no (pantalla llena).
+     */
+    private boolean trySpawnOnePowerUp() {
+        // 1. Contar cuantos power-ups hay en pantalla
+        int currentPowerUps = 0;
+        for (MovingObject obj : movingObjects) {
+            if (obj instanceof PowerUp) {
+                currentPowerUps++;
+            }
+        }
+
+        // 2. Si esta lleno, abortar
+        if (currentPowerUps >= MAX_POWERUPS_ON_SCREEN) {
+            return false;
+        }
+
+        // 3. Si hay espacio, crear y anadir uno
+        PowerUpType type = selectPowerUpType();
+        double x = Math.random() * (Constants.WIDTH - 100) + 50;
+        double y = Math.random() * (Constants.HEIGHT - 100) + 50;
+        Vector2D position = new Vector2D(x, y);
+
+        PowerUp powerUp = new PowerUp(position, type, this);
+        addObject(powerUp);
+        return true;
     }
 
     /**
      * Decide que tipo de power-up spawnear
      */
     private PowerUpType selectPowerUpType() {
+        // ... (codigo sin cambios) ...
         double rand = Math.random();
 
-        // 70% Bronce, 25% Plata, 5% Oro
+        // 5% Oro   (0.0 -> 0.05)
         if (rand < 0.05) {
             return PowerUpType.GOLD;
-        } else if (rand < 0.30) { // (0.30 - 0.05 = 25%)
+        }
+        // 15% Plata (0.05 -> 0.20)
+        else if (rand < 0.20) {
             return PowerUpType.SILVER;
-        } else { // (1.0 - 0.30 = 70%)
+        }
+        // 20% Multi-Disparo (0.20 -> 0.40)
+        else if (rand < 0.40) {
+            return PowerUpType.MULTI_SHOT;
+        }
+        // 25% Disparo Rapido (0.40 -> 0.65)
+        else if (rand < 0.65) {
+            return PowerUpType.RAPID_FIRE;
+        }
+        // 35% Bronce (0.65 -> 1.0)
+        else {
             return PowerUpType.BRONZE;
         }
     }
@@ -363,12 +446,15 @@ public class GameState extends State {
 
         spawnUfo();
 
-        spawnPowerUp(); // Llamar al metodo de spawn
+        // --- MODIFICADO ---
+        updatePowerUpSpawns(); // Llamar a la nueva logica de spawn
+        // --- FIN MODIFICADO ---
 
         handleWaveLogic();
     }
 
     private void handlePauseMenu(Point mouse) {
+        // ... (codigo sin cambios) ...
         if (resumeButtonBounds.contains(mouse) && MouseInput.isPressed()) {
             paused = false;
             showPauseMenu = false;
@@ -394,6 +480,7 @@ public class GameState extends State {
     }
 
     private void handleWaveLogic() {
+        // ... (codigo sin cambios) ...
         boolean hayMeteoros = false;
         boolean hayMiniBoss = false;
 
@@ -498,6 +585,7 @@ public class GameState extends State {
 
     // Spawnear sub-oleada de meteoros "poco a poco"
     private void spawnMeteorSubWave(int count) {
+        // ... (codigo sin cambios) ...
         Message subWaveMsg = new Message(
                 new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2 + 60),
                 false,
@@ -541,6 +629,7 @@ public class GameState extends State {
 
     @Override
     public void draw(Graphics g) {
+        // ... (codigo de draw (inicio) sin cambios) ...
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
@@ -599,13 +688,51 @@ public class GameState extends State {
             g.drawString("MENU PRINCIPAL", menuButtonBounds.x + 80, menuButtonBounds.y + 38);
         }
 
+
         drawScore(g);
         drawLives(g);
 
-        drawShieldHUD(g); // Dibujar la barra de escudo
+        // Dibujo dinamico del HUD (sin cambios)
+        if (player != null) {
+            int activePowerUps = 0; // Contador para la posicion horizontal
+
+            // 1. Dibujar Escudo (si esta activo)
+            if (player.isShielded()) {
+                drawPowerUpBar(g,
+                        player.getShieldTimeRemaining(),
+                        "ESCUDO",
+                        Color.CYAN,
+                        activePowerUps
+                );
+                activePowerUps++;
+            }
+
+            // 2. Dibujar Disparo Rapido (si esta activo)
+            if (player.isRapidFire()) {
+                drawPowerUpBar(g,
+                        player.getRapidFireTimeRemaining(),
+                        "DISPARO RAPIDO",
+                        Color.YELLOW,
+                        activePowerUps
+                );
+                activePowerUps++;
+            }
+
+            // 3. Dibujar Multi-Disparo (si esta activo)
+            if (player.isMultiShot()) {
+                drawPowerUpBar(g,
+                        player.getMultiShotTimeRemaining(),
+                        "MULTI-DISPARO",
+                        Color.GREEN,
+                        activePowerUps
+                );
+                activePowerUps++;
+            }
+        }
     }
 
     private void drawScore(Graphics g) {
+        // ... (codigo sin cambios) ...
         Vector2D pos = new Vector2D(1120, 35);
         String scoreToString = Integer.toString(score);
 
@@ -621,6 +748,7 @@ public class GameState extends State {
     }
 
     private void drawLives(Graphics g) {
+        // ... (codigo sin cambios) ...
         Vector2D livePosition = new Vector2D(20, 620);
         g.drawImage(Assets.life, (int) livePosition.getX(), (int) livePosition.getY(), null);
         g.drawImage(Assets.numbers[10], (int) livePosition.getX() + 40, (int) livePosition.getY() + 2, null);
@@ -635,30 +763,34 @@ public class GameState extends State {
         }
     }
 
-    // --- DIBUJAR BARRA DE ESCUDO ---
-    private void drawShieldHUD(Graphics g) {
-        if (player == null || !player.isShielded()) {
-            return; // No dibujar nada si no hay escudo
-        }
-
-        double percent = player.getShieldTimeRemaining(); // (0.0 a 1.0)
+    /**
+     * Dibuja una barra de estado para un power-up en una posicion horizontal dinamica.
+     */
+    private void drawPowerUpBar(Graphics g, double percent, String title, Color color, int positionIndex) {
+        // ... (codigo sin cambios) ...
 
         int barWidth = 150; // Ancho de la barra
         int barHeight = 15; // Alto
-        int x = Constants.WIDTH - barWidth - 30; // Posicion X (abajo derecha)
-        int y = Constants.HEIGHT - barHeight - 40; // Posicion Y
+        int spacing = 20;   // Espacio entre barras
 
-        // Dibujar el texto "ESCUDO" encima
+        // Posicion Y (fija, en la parte inferior)
+        int y = Constants.HEIGHT - barHeight - 40;
+
+        // Posicion X (dinamica, basada en el indice)
+        // Se alinea desde la derecha de la pantalla hacia la izquierda
+        int x = Constants.WIDTH - (barWidth + 30) - (positionIndex * (barWidth + spacing));
+
+        // Dibujar el texto del titulo
         g.setFont(Assets.fontMed);
-        g.setColor(Color.CYAN);
-        g.drawString("ESCUDO", x, y - 5);
+        g.setColor(color);
+        g.drawString(title, x, y - 5);
 
         // Dibujar el fondo de la barra
         g.setColor(Color.DARK_GRAY);
         g.fillRect(x, y, barWidth, barHeight);
 
         // Dibujar la barra de tiempo restante
-        g.setColor(Color.CYAN);
+        g.setColor(color);
         g.fillRect(x, y, (int)(barWidth * percent), barHeight);
 
         // Dibujar el borde
@@ -666,18 +798,22 @@ public class GameState extends State {
         g.drawRect(x, y, barWidth, barHeight);
     }
 
+
     // ------------------ Musica ------------------
     public void pauseMusic() {
+        // ... (codigo sin cambios) ...
         if (Assets.backgroundMusic != null)
             Assets.backgroundMusic.pause();
     }
 
     public void resumeMusic() {
+        // ... (codigo sin cambios) ...
         if (Assets.backgroundMusic != null && !Assets.backgroundMusic.isPlaying())
             Assets.backgroundMusic.resume();
     }
 
     public void stopMusic() {
+        // ... (codigo sin cambios) ...
         if (Assets.backgroundMusic != null) {
             Assets.backgroundMusic.stop();
         }
@@ -689,6 +825,7 @@ public class GameState extends State {
     }
 
     public void subtractLife() {
+        // ... (codigo sin cambios) ...
         lives--;
         if (lives <= 0) {
             stopMusic();
@@ -742,7 +879,6 @@ public class GameState extends State {
         messages.add(new Message(position, true, "+" + value + " puntos", Color.WHITE, false, Assets.fontMed, this));
     }
 
-    // Nuevo metodo para penalizacion del jugador
     public void subtractScore(int value, Vector2D position) {
         score -= value;
         if (score < 0) score = 0; // evitar negativos

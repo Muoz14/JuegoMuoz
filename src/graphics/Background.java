@@ -1,4 +1,4 @@
-package graphics; // O 'gameObject', como prefieras
+package graphics;
 
 import gameObject.Constants;
 import java.awt.Graphics;

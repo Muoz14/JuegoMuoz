@@ -11,6 +11,7 @@ import states.SettingsData;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
+import java.util.List; // Asegurate de importar List
 
 public class Player extends MovingObject {
 
@@ -34,9 +35,19 @@ public class Player extends MovingObject {
 
     private Chronometer spawnTime, flickerTime;
 
+    // --- Variables de Escudo ---
     private boolean isShielded = false;
     private Chronometer shieldTimer;
     private Animation shieldAnimation;
+
+    // --- Variables de Disparo Rapido ---
+    private boolean isRapidFire = false;
+    private Chronometer rapidFireTimer;
+
+    // --- Variables de Multi-Disparo ---
+    private boolean isMultiShot = false;
+    private Chronometer multiShotTimer;
+
 
     public Player(Vector2D position, Vector2D velocity, GameState gameState, ShipData data, BufferedImage laserTexture) {
         super(position, velocity, data.getMaxVelocity(), data.getTexture(), gameState);
@@ -50,6 +61,8 @@ public class Player extends MovingObject {
         flickerTime = new Chronometer();
 
         shieldTimer = new Chronometer();
+        rapidFireTimer = new Chronometer();
+        multiShotTimer = new Chronometer(); // Inicializar timer
 
         float initialSFXVolume = SettingsData.getVolume() * 1.2f;
         if (initialSFXVolume > 1f) initialSFXVolume = 1f;
@@ -61,18 +74,38 @@ public class Player extends MovingObject {
     public void update() {
         if (spawning) updateSpawnTimer();
 
+        // --- Actualizacion de Power-ups ---
         if (isShielded) {
             shieldTimer.update();
             shieldAnimation.update();
-
             if (shieldTimer.isFinished()) {
                 deactivateShield();
             }
         }
 
+        if (isRapidFire) {
+            rapidFireTimer.update();
+            if (rapidFireTimer.isFinished()) {
+                deactivateRapidFire();
+            }
+        }
+
+        if (isMultiShot) {
+            multiShotTimer.update();
+            if (multiShotTimer.isFinished()) {
+                deactivateMultiShot();
+            }
+        }
+
+
         if (KeyBoard.SHOOT() && !fireRate.isRunning() && !spawning) {
             Vector2D basePosition = getCenter().add(heading.scale(width));
-            for (Vector2D offset : data.gunOffsets) {
+
+            // 1. Determinar que lista de canones usar
+            List<Vector2D> currentGunOffsets = isMultiShot ? data.upgradedGunOffsets : data.gunOffsets;
+
+            // 2. Iterar sobre la lista correcta
+            for (Vector2D offset : currentGunOffsets) {
                 Vector2D rotatedOffset = offset.rotate(angle);
                 gameState.addObject(new Laser(
                         basePosition.add(rotatedOffset),
@@ -85,7 +118,9 @@ public class Player extends MovingObject {
                 ));
             }
 
-            fireRate.run(Constants.FIRERATE);
+            // Logica de Disparo Rapido
+            long currentFireRate = isRapidFire ? (long)(Constants.FIRERATE * 0.5) : Constants.FIRERATE;
+            fireRate.run(currentFireRate);
 
             float sfxVolume = SettingsData.getVolume() * 1.2f;
             if (sfxVolume > 1f) sfxVolume = 1f;
@@ -167,27 +202,21 @@ public class Player extends MovingObject {
         at.rotate(angle, width / 2, height / 2);
         g2d.drawImage(texture, at, null);
 
-        // --- INICIO DE LA SOLUCION: DIBUJAR ESCUDO CON ROTACION ---
         if (isShielded && shieldAnimation != null) {
             BufferedImage shieldFrame = shieldAnimation.getCurrentFrame();
 
             int frameWidth = shieldFrame.getWidth();
             int frameHeight = shieldFrame.getHeight();
 
-            // Centrar el escudo en la nave
             double x = getCenter().getX() - (frameWidth / 2.0);
             double y = getCenter().getY() - (frameHeight / 2.0);
 
-            // Crear una nueva transformacion para el escudo
             AffineTransform shieldAt = AffineTransform.getTranslateInstance(x, y);
 
-            // Rotar el escudo alrededor del centro del jugador
-            // (centroDelJugadorX - posicionDelEscudoX, centroDelJugadorY - posicionDelEscudoY)
             shieldAt.rotate(angle, getCenter().getX() - x, getCenter().getY() - y);
 
             g2d.drawImage(shieldFrame, shieldAt, null);
         }
-        // --- FIN DE LA SOLUCION ---
     }
 
     public boolean isSpawning() { return spawning; }
@@ -221,6 +250,8 @@ public class Player extends MovingObject {
         return spawning;
     }
 
+    // --- Metodos de Power-ups ---
+
     public void activateShield(PowerUpType type) {
         isShielded = true;
         shieldTimer.run(type.duration);
@@ -239,6 +270,27 @@ public class Player extends MovingObject {
         shieldAnimation = null;
     }
 
+    public void activateRapidFire(PowerUpType type) {
+        isRapidFire = true;
+        rapidFireTimer.run(type.duration);
+    }
+
+    public void deactivateRapidFire() {
+        isRapidFire = false;
+        rapidFireTimer.reset();
+    }
+
+    public void activateMultiShot(PowerUpType type) {
+        isMultiShot = true;
+        multiShotTimer.run(type.duration);
+    }
+
+    public void deactivateMultiShot() {
+        isMultiShot = false;
+        multiShotTimer.reset();
+    }
+
+
     public void triggerPostHitImmunity(boolean applyKnockback) {
         if (spawning) return;
 
@@ -252,6 +304,8 @@ public class Player extends MovingObject {
         }
     }
 
+    // --- Getters para el HUD ---
+
     public boolean isShielded() {
         return isShielded;
     }
@@ -262,6 +316,29 @@ public class Player extends MovingObject {
         }
         return (double)shieldTimer.getTimeRemaining() / shieldTimer.getDuration();
     }
+
+    public boolean isRapidFire() {
+        return isRapidFire;
+    }
+
+    public double getRapidFireTimeRemaining() {
+        if (!isRapidFire || !rapidFireTimer.isRunning() || rapidFireTimer.getDuration() == 0) {
+            return 0;
+        }
+        return (double)rapidFireTimer.getTimeRemaining() / rapidFireTimer.getDuration();
+    }
+
+    public boolean isMultiShot() {
+        return isMultiShot;
+    }
+
+    public double getMultiShotTimeRemaining() {
+        if (!isMultiShot || !multiShotTimer.isRunning() || multiShotTimer.getDuration() == 0) {
+            return 0;
+        }
+        return (double)multiShotTimer.getTimeRemaining() / multiShotTimer.getDuration();
+    }
+
 
     @Override
     public Vector2D getCenter() {

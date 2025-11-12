@@ -6,7 +6,7 @@ public class Constants {
 
     //Propiedades ventana
 
-    public static final int WIDTH = 1240;
+    public static final int WIDTH = 1280;
     public static final int HEIGHT = 720;
 
     // Propiedades del jugador
@@ -15,9 +15,6 @@ public class Constants {
     public static final double DELTAANGLE = 0.1;
     public static final double ACC = 0.2;
     public static final double PLAYER_MAX_VEL = 5.0;
-
-    public static final long SPAWNING_TIME = 3000;
-    public static final long FLICKER_TIME = 200;
 
     //Propiedades del laser
 

@@ -62,19 +62,30 @@ public class PowerUp extends MovingObject {
         double distance = getCenter().subtract(player.getCenter()).getMagnitude();
         if (distance < (width / 2.0) + (player.width / 2.0)) {
             // ¡Colision!
-            player.activateShield(type);
 
-            // --- INICIO DE LA SOLUCION: CAMBIAR FUENTE ---
+            // Usamos la categoria para decidir que metodo llamar.
+            switch (type.category) {
+                case SHIELD:
+                    player.activateShield(type);
+                    break;
+                case RAPID_FIRE:
+                    player.activateRapidFire(type);
+                    break;
+                case MULTI_SHOT:
+                    player.activateMultiShot(type);
+                    break;
+            }
+
+            // El mensaje ahora se toma directamente del enum (type.message)
             Message pickupMsg = new Message(
                     player.getCenter(),
-                    false, // No se desvanece
+                    false,
                     type.message,
                     Color.CYAN,
                     true,
-                    Assets.fontMed, // <-- CAMBIADO A FUENTE MEDIANA
+                    Assets.fontMed,
                     gameState
             );
-            // --- FIN DE LA SOLUCION ---
 
             pickupMsg.setLifespan(2500); // 2.5s en pantalla
             gameState.addMessage(pickupMsg);

@@ -61,6 +61,7 @@ public class Assets {
 
     //POWER-UPS
     public static BufferedImage shield_bronze, shield_silver, shield_gold;
+    public static BufferedImage speed_shoot, extra_gun;
 
     //ANIMACION DE ESCUDO
     public static BufferedImage[] shield_effect = new BufferedImage[3];
@@ -153,6 +154,9 @@ public class Assets {
         shield_bronze = Loader.ImageLoader("/power-ups/shield_bronze.png");
         shield_silver = Loader.ImageLoader("/power-ups/shield_silver.png");
         shield_gold = Loader.ImageLoader("/power-ups/shield_gold.png");
+
+        speed_shoot = Loader.ImageLoader("/power-ups/speed_shoot.png");
+        extra_gun = Loader.ImageLoader("/power-ups/extra_gun.png");
 
         //Carga animacion de escudo
         shield_effect[0] = Loader.ImageLoader("/shield/shield1.png");
