@@ -11,7 +11,7 @@ import states.SettingsData;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
-import java.util.List; // Asegurate de importar List
+import java.util.List;
 
 public class Player extends MovingObject {
 
@@ -35,18 +35,19 @@ public class Player extends MovingObject {
 
     private Chronometer spawnTime, flickerTime;
 
-    // --- Variables de Escudo ---
+    // --- Timers de Power-Ups ---
     private boolean isShielded = false;
     private Chronometer shieldTimer;
     private Animation shieldAnimation;
 
-    // --- Variables de Disparo Rapido ---
     private boolean isRapidFire = false;
     private Chronometer rapidFireTimer;
 
-    // --- Variables de Multi-Disparo ---
     private boolean isMultiShot = false;
     private Chronometer multiShotTimer;
+
+    private boolean isScoreMultiplier = false;
+    private Chronometer scoreMultiplierTimer;
 
 
     public Player(Vector2D position, Vector2D velocity, GameState gameState, ShipData data, BufferedImage laserTexture) {
@@ -62,7 +63,8 @@ public class Player extends MovingObject {
 
         shieldTimer = new Chronometer();
         rapidFireTimer = new Chronometer();
-        multiShotTimer = new Chronometer(); // Inicializar timer
+        multiShotTimer = new Chronometer();
+        scoreMultiplierTimer = new Chronometer();
 
         float initialSFXVolume = SettingsData.getVolume() * 1.2f;
         if (initialSFXVolume > 1f) initialSFXVolume = 1f;
@@ -82,29 +84,30 @@ public class Player extends MovingObject {
                 deactivateShield();
             }
         }
-
         if (isRapidFire) {
             rapidFireTimer.update();
             if (rapidFireTimer.isFinished()) {
                 deactivateRapidFire();
             }
         }
-
         if (isMultiShot) {
             multiShotTimer.update();
             if (multiShotTimer.isFinished()) {
                 deactivateMultiShot();
             }
         }
+        if (isScoreMultiplier) {
+            scoreMultiplierTimer.update();
+            if (scoreMultiplierTimer.isFinished()) {
+                deactivateScoreMultiplier();
+            }
+        }
 
-
+        // --- Logica de Disparo ---
         if (KeyBoard.SHOOT() && !fireRate.isRunning() && !spawning) {
             Vector2D basePosition = getCenter().add(heading.scale(width));
-
-            // 1. Determinar que lista de canones usar
             List<Vector2D> currentGunOffsets = isMultiShot ? data.upgradedGunOffsets : data.gunOffsets;
 
-            // 2. Iterar sobre la lista correcta
             for (Vector2D offset : currentGunOffsets) {
                 Vector2D rotatedOffset = offset.rotate(angle);
                 gameState.addObject(new Laser(
@@ -118,7 +121,6 @@ public class Player extends MovingObject {
                 ));
             }
 
-            // Logica de Disparo Rapido
             long currentFireRate = isRapidFire ? (long)(Constants.FIRERATE * 0.5) : Constants.FIRERATE;
             fireRate.run(currentFireRate);
 
@@ -130,6 +132,7 @@ public class Player extends MovingObject {
 
         if (Assets.playerShoot.getFramePosition() > 15500) Assets.playerShoot.stop();
 
+        // --- Logica de Movimiento ---
         if (KeyBoard.RIGTH()) angle += Constants.DELTAANGLE;
         if (KeyBoard.LEFT()) angle -= Constants.DELTAANGLE;
 
@@ -148,6 +151,7 @@ public class Player extends MovingObject {
         heading = heading.setDirection(angle - Math.PI / 2);
         position = position.add(velocity);
 
+        // Limites de pantalla
         if (position.getX() > Constants.WIDTH) position.setX(0);
         if (position.getY() > Constants.HEIGHT) position.setY(0);
         if (position.getX() < 0) position.setX(Constants.WIDTH);
@@ -162,13 +166,11 @@ public class Player extends MovingObject {
         if (isSpawning() || isShielded()) {
             return;
         }
-
         if (!dead) {
             dead = true;
             visible = false;
             Assets.playerLoose.play();
             Assets.playerLoose.changeVolume(-2.0f);
-
             gameState.subtractScore(80, getCenter());
             resetValues();
         }
@@ -204,21 +206,17 @@ public class Player extends MovingObject {
 
         if (isShielded && shieldAnimation != null) {
             BufferedImage shieldFrame = shieldAnimation.getCurrentFrame();
-
             int frameWidth = shieldFrame.getWidth();
             int frameHeight = shieldFrame.getHeight();
-
             double x = getCenter().getX() - (frameWidth / 2.0);
             double y = getCenter().getY() - (frameHeight / 2.0);
-
             AffineTransform shieldAt = AffineTransform.getTranslateInstance(x, y);
-
             shieldAt.rotate(angle, getCenter().getX() - x, getCenter().getY() - y);
-
             g2d.drawImage(shieldFrame, shieldAt, null);
         }
     }
 
+    // --- Metodos de Respawn ---
     public boolean isSpawning() { return spawning; }
     public boolean isDead() { return dead; }
 
@@ -233,12 +231,10 @@ public class Player extends MovingObject {
     public void updateSpawnTimer() {
         spawnTime.update();
         flickerTime.update();
-
         if (flickerTime.isFinished()) {
             visible = !visible;
             flickerTime.run(200);
         }
-
         if (spawnTime.isFinished()) {
             spawning = false;
             visible = true;
@@ -250,93 +246,108 @@ public class Player extends MovingObject {
         return spawning;
     }
 
-    // --- Metodos de Power-ups ---
-
-    public void activateShield(PowerUpType type) {
-        isShielded = true;
-        shieldTimer.run(type.duration);
-
-        shieldAnimation = new Animation(
-                Assets.shield_effect,
-                150,
-                new Vector2D(),
-                true
-        );
+    public void triggerPostHitImmunity(boolean applyKnockback) {
+        if (spawning) return;
+        spawning = true;
+        visible = true;
+        spawnTime.run(1500);
+        flickerTime.run(200);
+        if (applyKnockback) {
+            velocity = heading.scale(-8.0);
+        }
     }
 
+    // --- Metodos de Activacion de Power-ups ---
+
+    // --- ESCUDO (REFACTORIZADO) ---
+    public void activateShield(PowerUpType type) {
+        // Metodo simple (publico)
+        activateShield(type, type.duration);
+    }
+    public void activateShield(PowerUpType type, long duration) {
+        // Metodo sobrecargado (publico) con duracion custom
+        isShielded = true;
+        shieldTimer.run(duration); // Usa la duracion pasada como parametro
+        shieldAnimation = new Animation(
+                Assets.shield_effect, 150, new Vector2D(), true
+        );
+    }
     public void deactivateShield() {
         isShielded = false;
         shieldTimer.reset();
         shieldAnimation = null;
     }
 
+    // --- DISPARO RAPIDO (REFACTORIZADO) ---
     public void activateRapidFire(PowerUpType type) {
-        isRapidFire = true;
-        rapidFireTimer.run(type.duration);
+        activateRapidFire(type, type.duration);
     }
-
+    public void activateRapidFire(PowerUpType type, long duration) {
+        isRapidFire = true;
+        rapidFireTimer.run(duration);
+    }
     public void deactivateRapidFire() {
         isRapidFire = false;
         rapidFireTimer.reset();
     }
 
+    // --- MULTI-DISPARO (REFACTORIZADO) ---
     public void activateMultiShot(PowerUpType type) {
-        isMultiShot = true;
-        multiShotTimer.run(type.duration);
+        activateMultiShot(type, type.duration);
     }
-
+    public void activateMultiShot(PowerUpType type, long duration) {
+        isMultiShot = true;
+        multiShotTimer.run(duration);
+    }
     public void deactivateMultiShot() {
         isMultiShot = false;
         multiShotTimer.reset();
     }
 
-
-    public void triggerPostHitImmunity(boolean applyKnockback) {
-        if (spawning) return;
-
-        spawning = true;
-        visible = true;
-        spawnTime.run(1500);
-        flickerTime.run(200);
-
-        if (applyKnockback) {
-            velocity = heading.scale(-8.0);
-        }
+    // --- PUNTOS DOBLES (REFACTORIZADO) ---
+    public void activateScoreMultiplier(PowerUpType type) {
+        activateScoreMultiplier(type, type.duration);
+    }
+    public void activateScoreMultiplier(PowerUpType type, long duration) {
+        isScoreMultiplier = true;
+        scoreMultiplierTimer.run(duration);
+    }
+    public void deactivateScoreMultiplier() {
+        isScoreMultiplier = false;
+        scoreMultiplierTimer.reset();
     }
 
     // --- Getters para el HUD ---
-
     public boolean isShielded() {
         return isShielded;
     }
-
     public double getShieldTimeRemaining() {
-        if (!isShielded || !shieldTimer.isRunning() || shieldTimer.getDuration() == 0) {
-            return 0;
-        }
+        if (!isShielded || !shieldTimer.isRunning() || shieldTimer.getDuration() == 0) return 0;
         return (double)shieldTimer.getTimeRemaining() / shieldTimer.getDuration();
     }
 
     public boolean isRapidFire() {
         return isRapidFire;
     }
-
     public double getRapidFireTimeRemaining() {
-        if (!isRapidFire || !rapidFireTimer.isRunning() || rapidFireTimer.getDuration() == 0) {
-            return 0;
-        }
+        if (!isRapidFire || !rapidFireTimer.isRunning() || rapidFireTimer.getDuration() == 0) return 0;
         return (double)rapidFireTimer.getTimeRemaining() / rapidFireTimer.getDuration();
     }
 
     public boolean isMultiShot() {
         return isMultiShot;
     }
-
     public double getMultiShotTimeRemaining() {
-        if (!isMultiShot || !multiShotTimer.isRunning() || multiShotTimer.getDuration() == 0) {
-            return 0;
-        }
+        if (!isMultiShot || !multiShotTimer.isRunning() || multiShotTimer.getDuration() == 0) return 0;
         return (double)multiShotTimer.getTimeRemaining() / multiShotTimer.getDuration();
+    }
+
+    public boolean isScoreMultiplier() {
+        return isScoreMultiplier;
+    }
+    public double getScoreMultiplierTimeRemaining() {
+        if (!isScoreMultiplier || !scoreMultiplierTimer.isRunning() || scoreMultiplierTimer.getDuration() == 0) return 0;
+        return (double)scoreMultiplierTimer.getTimeRemaining() / scoreMultiplierTimer.getDuration();
     }
 
 

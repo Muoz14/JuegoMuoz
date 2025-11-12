@@ -5,13 +5,14 @@ import java.awt.image.BufferedImage;
 
 /**
  * Enum interno para categorizar los power-ups.
- * Esto le dice a PowerUp.java y Player.java que logica ejecutar.
  */
 enum PowerUpCategory {
     SHIELD,
     RAPID_FIRE,
-    MULTI_SHOT
-    // Aqui puedes anadir mas en el futuro: EXTRA_LIFE, SCORE_MULTIPLIER, etc.
+    MULTI_SHOT,
+    EXTRA_LIFE,
+    SCORE_MULTIPLIER,
+    RANDOM // --- NUEVO ---
 }
 
 /**
@@ -21,39 +22,40 @@ public enum PowerUpType {
 
     // --- ESCUDOS ---
     BRONZE(
-            Assets.shield_bronze,
-            8500,
-            "ESCUDO LVL 1",
-            PowerUpCategory.SHIELD
+            Assets.shield_bronze, 5000, "ESCUDO LVL 1", PowerUpCategory.SHIELD
     ),
     SILVER(
-            Assets.shield_silver,
-            12000,
-            "ESCUDO LVL 2",
-            PowerUpCategory.SHIELD
+            Assets.shield_silver, 10000, "ESCUDO LVL 2", PowerUpCategory.SHIELD
     ),
     GOLD(
-            Assets.shield_gold,
-            18000,
-            "ESCUDO LVL 3",
-            PowerUpCategory.SHIELD
+            Assets.shield_gold, 15000, "ESCUDO LVL 3", PowerUpCategory.SHIELD
     ),
 
-    // --- DISPARO RAPIDO ---
+    // --- OFENSIVOS ---
     RAPID_FIRE(
-            Assets.speed_shoot,
-            12000,
-            "¡DISPARO RAPIDO!",
-            PowerUpCategory.RAPID_FIRE
+            Assets.speed_shoot, 8500, "¡DISPARO RAPIDO!", PowerUpCategory.RAPID_FIRE
+    ),
+    MULTI_SHOT(
+            Assets.extra_gun, 10000, "¡MULTI-DISPARO!", PowerUpCategory.MULTI_SHOT
     ),
 
-    // --- MULTI-DISPARO ---
-    MULTI_SHOT(
-            Assets.extra_gun,
-            18000,
-            "¡MULTI-DISPARO!",
-            PowerUpCategory.MULTI_SHOT
+    // --- UTILIDAD Y PUNTOS ---
+    EXTRA_LIFE(
+            Assets.extraLife, 0, "¡VIDA EXTRA!", PowerUpCategory.EXTRA_LIFE
+    ),
+    DOUBLE_POINTS(
+            Assets.double_points, 15000, "¡PUNTOS X2!", PowerUpCategory.SCORE_MULTIPLIER
+    ),
+
+    // --- NUEVO: ALEATORIO ---
+    RANDOM_POWER(
+            Assets.random_powerUp,
+            0,                     // Duracion 0 (es instantaneo)
+            "¿...?",               // Mensaje al recogerlo
+            PowerUpCategory.RANDOM
     );
+    // --- FIN NUEVO ---
+
 
     // --- Propiedades de cada Power-Up ---
     public final BufferedImage texture;
@@ -63,10 +65,6 @@ public enum PowerUpType {
 
     /**
      * Constructor para cada tipo de power-up.
-     * @param texture La imagen del icono que dropea.
-     * @param duration Cuanto dura el efecto en milisegundos.
-     * @param message El texto que aparece al recogerlo.
-     * @param category La categoria logica a la que pertenece.
      */
     PowerUpType(BufferedImage texture, long duration, String message, PowerUpCategory category) {
         this.texture = texture;
