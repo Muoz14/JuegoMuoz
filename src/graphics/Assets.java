@@ -73,6 +73,9 @@ public class Assets {
 
     public static BufferedImage raider;
 
+    public static BufferedImage finalBoss;
+    public static BufferedImage minion;
+
     public static void init(){
 
         // Carga de fuentes PRIMERO, porque la pantalla de carga las usa
@@ -187,6 +190,9 @@ public class Assets {
         menuStarsBig2 = Loader.ImageLoader("/menu_bg/starsBig2.png");
 
         raider = Loader.ImageLoader("/ships/enemie1.png");
+
+        finalBoss = Loader.ImageLoader("/boss/bossFinal.png");
+        minion = Loader.ImageLoader("/boss/esbirro.png");
 
     }
 }

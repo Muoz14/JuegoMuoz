@@ -57,5 +57,15 @@ public class Constants {
     public static final long RAIDER_FIRE_RATE = 1500; // Mas lento que el UFO
     public static final int RAIDER_SCORE = 100;
 
+    // Propiedades del Jefe Final
+    public static final int FINAL_BOSS_HEALTH = 350;
+    public static final double BOSS_ENTER_SPEED = 1.0;
+    public static final double BOSS_CHARGE_SPEED = 8.0;
+
+    // Propiedades del Esbirro (Minion)
+    public static final double MINION_SPEED = 2.5;
+    public static final long MINION_FIRE_RATE = 2500;
+    public static final int MINION_SCORE = 50;
+
 
 }

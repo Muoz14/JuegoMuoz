@@ -38,8 +38,8 @@ public class GameState extends State {
     private long waveClearTime = 0;
     private boolean nextWaveStarting = false;
 
-    // Variable específica para el manager, en lugar de meterlo en la lista
     private RaiderSquadManager squadManager = null;
+    private FinalBoss finalBoss = null;
 
     private boolean paused = false;
     private boolean startingCountdown = true;
@@ -133,10 +133,15 @@ public class GameState extends State {
         if (countdownValue <= 0) {
             startingCountdown = false;
 
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // ¡Reanudar timers AQUÍ, cuando el contador termina!
+            // Reanuda TODOS los timers del juego
             player.resumeTimers();
-            // --- FIN DE LA MODIFICACIÓN ---
+            if (squadManager != null) squadManager.resumeTimers();
+            if (finalBoss != null) finalBoss.resumeTimers();
+            // Reanudar timers de esbirros y OVNIs
+            for(MovingObject m : movingObjects) {
+                if (m instanceof Minion) ((Minion)m).resumeTimers();
+                if (m instanceof Ufo) ((Ufo)m).resumeTimers();
+            }
 
             if (!firstWaveStarted) {
                 startWave();
@@ -228,8 +233,31 @@ public class GameState extends State {
             return false;
         }
         PowerUpType type = selectPowerUpType();
-        double x = Math.random() * (Constants.WIDTH - 100) + 50;
-        double y = Math.random() * (Constants.HEIGHT - 100) + 50;
+
+        double x, y;
+
+        if (finalBoss != null) {
+            // Jefe Final está activo, spawnear en la zona segura
+            BossPhase phase = finalBoss.getPhase();
+
+            // Si el jefe está arriba (Fase 1) o en transición 1/2
+            if (phase == BossPhase.PHASE_1 || phase == BossPhase.TRANSITION_1 || phase == BossPhase.TRANSITION_2) {
+                // Spawnear en la MITAD INFERIOR de la pantalla
+                x = Math.random() * (Constants.WIDTH - 100) + 50;
+                y = Math.random() * (Constants.HEIGHT / 2 - 100) + (Constants.HEIGHT / 2); // ej. 360 a 620
+            } else {
+                // Si el jefe está abajo (Fase 2) o en transición 3
+                // Spawnear en la MITAD SUPERIOR de la pantalla
+                x = Math.random() * (Constants.WIDTH - 100) + 50;
+                y = Math.random() * (Constants.HEIGHT / 2 - 150) + 50; // ej. 50 a 210
+            }
+
+        } else {
+            // Lógica original: spawnear en cualquier lugar
+            x = Math.random() * (Constants.WIDTH - 100) + 50;
+            y = Math.random() * (Constants.HEIGHT - 100) + 50;
+        }
+
         Vector2D position = new Vector2D(x, y);
         PowerUp powerUp = new PowerUp(position, type, this);
         addObject(powerUp);
@@ -241,8 +269,6 @@ public class GameState extends State {
      */
     private PowerUpType selectPowerUpType() {
         double rand = Math.random();
-
-        // --- PROBABILIDADES MODIFICADAS ---
 
         // 5% Oro (0.0 -> 0.05)
         if (rand < 0.05) {
@@ -290,33 +316,20 @@ public class GameState extends State {
             if (!anim.isRunning()) explosion.remove(i);
         }
 
-        // --- INICIO DE LA MODIFICACIÓN (PAUSA) ---
-        // Pausa
+        // LÓGICA DE PAUSA MEJORADA
         if (pauseButtonBounds.contains(mouse) && MouseInput.isPressed()) {
-            Assets.buttonSelected.play();
-            paused = true;
-            showPauseMenu = true;
+            pauseGame();
             MouseInput.releaseClick();
-            pauseMusic();
-            SoundManager.getInstance().pauseAll();
-            player.pauseTimers();
         }
         boolean escNow = KeyBoard.isKeyPressed(KeyEvent.VK_ESCAPE);
         if (escNow && !escPressedLastFrame) {
-            paused = !paused;
-            showPauseMenu = paused;
             if (paused) {
-                pauseMusic();
-                SoundManager.getInstance().pauseAll();
-                player.pauseTimers();
+                resumeGame();
             } else {
-                startCountdown(); // <-- Solo inicia el contador
-                resumeMusic();
-                // (Se eliminó player.resumeTimers())
+                pauseGame();
             }
         }
         escPressedLastFrame = escNow;
-        // --- FIN DE LA MODIFICACIÓN (PAUSA) ---
 
         if (paused && showPauseMenu) {
             handlePauseMenu(mouse);
@@ -332,16 +345,18 @@ public class GameState extends State {
         // ------------------ Actualizar objetos ------------------
         background.update();
 
-        // Actualizar todos los MovingObject
         for (int i = 0; i < movingObjects.size(); i++) {
             if (i < movingObjects.size()) {
                 movingObjects.get(i).update();
             }
         }
 
-        // Actualizar el Squad Manager (si existe)
         if (squadManager != null) {
             squadManager.update();
+        }
+
+        if (finalBoss != null) {
+            finalBoss.update();
         }
 
         // Reaparicion del player
@@ -372,15 +387,34 @@ public class GameState extends State {
         handleWaveLogic();
     }
 
+    private void pauseGame() {
+        paused = true;
+        showPauseMenu = true;
+        pauseMusic();
+        SoundManager.getInstance().pauseAll();
+
+        // Pausar todo lo que tenga timers
+        player.pauseTimers();
+        if (squadManager != null) squadManager.pauseTimers();
+        if (finalBoss != null) finalBoss.pauseTimers();
+
+        for(MovingObject m : movingObjects) {
+            if (m instanceof Minion) ((Minion)m).pauseTimers();
+            if (m instanceof Ufo) ((Ufo)m).pauseTimers();
+        }
+    }
+
+    private void resumeGame() {
+        paused = false;
+        showPauseMenu = false;
+        startCountdown(); // Inicia el contador (que luego reanuda los timers)
+        resumeMusic();
+        SoundManager.getInstance().resumeAll();
+    }
+
     private void handlePauseMenu(Point mouse) {
         if (resumeButtonBounds.contains(mouse) && MouseInput.isPressed()) {
-            paused = false;
-            showPauseMenu = false;
-            Assets.buttonSelected.play();
-            startCountdown(); // <-- Solo inicia el contador
-            resumeMusic();
-            SoundManager.getInstance().resumeAll();
-            // (Se eliminó player.resumeTimers())
+            resumeGame();
             MouseInput.releaseClick();
         }
         if (settingsButtonBounds.contains(mouse) && MouseInput.isPressed()) {
@@ -401,21 +435,35 @@ public class GameState extends State {
         // 1. Contar enemigos activos
         boolean hayMeteoros = false, hayMiniBoss = false;
         boolean hayRaiderEvent = (squadManager != null);
+        boolean hayFinalBoss = (finalBoss != null);
+
+        int meteorCount = 0;
 
         for (MovingObject obj : movingObjects) {
-            if (obj instanceof Meteor) hayMeteoros = true;
+            if (obj instanceof Meteor) {
+                hayMeteoros = true;
+                meteorCount++;
+            }
             if (obj instanceof MiniBoss) hayMiniBoss = true;
         }
 
         // 2. Lógica de reabastecimiento de meteoros
-        if ((hayRaiderEvent || hayMiniBoss) && !hayMeteoros && !nextWaveStarting) {
-            nextWaveStarting = true;
-            int subWaveSize = (waves / 2) + 1;
-            spawnMeteorSubWave(subWaveSize);
+        if (hayFinalBoss) {
+            // Para el Jefe Final, mantener solo 1 meteoro
+            if (meteorCount < 1 && !nextWaveStarting) {
+                nextWaveStarting = true;
+                spawnMeteorSubWave(1);
+            }
+        } else if (hayRaiderEvent || hayMiniBoss) {
+            // Para Mini-Boss y Raiders, mantener hasta 3 meteoros
+            if (meteorCount < 3 && !nextWaveStarting) {
+                nextWaveStarting = true;
+                spawnMeteorSubWave(1);
+            }
         }
 
         // 3. Lógica de Oleada Completada
-        if (!hayMeteoros && !hayMiniBoss && !hayRaiderEvent && firstWaveStarted && !waveCleared && !nextWaveStarting) {
+        if (!hayMeteoros && !hayMiniBoss && !hayRaiderEvent && !hayFinalBoss && firstWaveStarted && !waveCleared && !nextWaveStarting) {
             waveCleared = true;
             waveClearTime = System.currentTimeMillis();
             Message completeMsg = new Message(new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2), false, "OLEADA COMPLETADA!", Color.WHITE, true, Assets.fontBig, this);
@@ -430,18 +478,44 @@ public class GameState extends State {
                 waveCleared = false;
                 nextWaveStarting = true;
                 waves++;
-                meteors++;
+
+                // --- INICIO DE LA MODIFICACIÓN (METEOR CAP) ---
+                if (waves <= 8) {
+                    meteors++; // Aumenta hasta 8
+                }
+                // Si waves > 8, 'meteors' se queda en 8
+                // --- FIN DE LA MODIFICACIÓN ---
+
                 Message waveMessage = new Message(new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2), false, "OLEADA " + waves + "!", Color.WHITE, true, Assets.fontBig, this);
                 waveMessage.setLifespan(3000);
                 addMessage(waveMessage);
 
                 new Thread(() -> {
                     try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
-                    startWave();
-                    nextWaveStarting = false;
 
-                    // --- SPAWN MINI-BOSS (Cada 3 oleadas) ---
-                    if (waves % 3 == 0) {
+                    // --- 1. SPAWN JEFE FINAL (Cada 10 oleadas) ---
+                    if (waves > 0 && waves % 10 == 0) {
+                        try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+
+                        // Guardar el contador real de meteoros
+                        int oldMeteorCount = meteors;
+                        meteors = 1; // Poner 1 meteoro para la oleada del jefe
+                        startWave();
+                        meteors = oldMeteorCount; // Restaurar para la proxima oleada
+
+                        nextWaveStarting = false;
+
+                        double spawnX = (Constants.WIDTH / 2.0 - Assets.finalBoss.getWidth() / 2.0) + 100;
+                        Vector2D bossPos = new Vector2D(spawnX, -Assets.finalBoss.getHeight());
+
+                        finalBoss = new FinalBoss(bossPos, this);
+                        addObject(finalBoss);
+
+                        // --- 2. SPAWN MINI-BOSS (Cada 4 oleadas, si NO es oleada de Jefe Final) ---
+                    } else if (waves > 0 && waves % 4 == 0) {
+                        startWave();
+                        nextWaveStarting = false;
+
                         try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
                         ShipData selectedShip = ShipLibrary.getSelectedShip();
                         int numCannons = selectedShip.getGunOffsets().size();
@@ -452,14 +526,21 @@ public class GameState extends State {
                         Message bossMsg = new Message(new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2 - 100), false, "MINI JEFE DETECTADO!", Color.RED, true, Assets.fontBig, this);
                         bossMsg.setLifespan(4000);
                         addMessage(bossMsg);
-                    }
 
-                    // --- SPAWN RAIDER SQUAD MANAGER (Cada 2 oleadas, excepto oleada 1) ---
-                    if (waves > 1 && waves % 2 == 0) {
+                        // --- 3. SPAWN RAIDER SQUAD (Cada 3 oleadas, si NO es oleada de Jefe o MiniJefe) ---
+                    } else if (waves > 1 && waves % 3 == 0) {
+                        startWave();
+                        nextWaveStarting = false;
+
                         try { Thread.sleep(4000); } catch (InterruptedException ignored) {}
-
                         squadManager = new RaiderSquadManager(this);
+
+                        // --- 4. OLEADA NORMAL ---
+                    } else {
+                        startWave();
+                        nextWaveStarting = false;
                     }
+                    // --- FIN DE LA MODIFICACIÓN ---
 
                 }).start();
             }
@@ -502,8 +583,6 @@ public class GameState extends State {
         }
         g.drawImage(pauseButtonImg, pauseButtonBounds.x, pauseButtonBounds.y, null);
 
-        // --- INICIO DE LA MODIFICACIÓN (REORDENADO) ---
-
         // 1. Dibujar el HUD (Score, Vidas, Barras de Power-up) PRIMERO
         drawScore(g);
         drawLives(g);
@@ -534,7 +613,6 @@ public class GameState extends State {
         }
 
         // 3. Dibujar el menú de pausa (si está activo) ÚLTIMO
-        // Esto dibujará el fondo difuminado ENCIMA del HUD
         if (paused && showPauseMenu) {
             g2d.setColor(new Color(0, 0, 0, (int) (255 * pauseOverlayAlpha)));
             g2d.fillRect(0, 0, Constants.WIDTH, Constants.HEIGHT);
@@ -547,8 +625,6 @@ public class GameState extends State {
             g.drawImage(menuButtonBounds.contains(MouseInput.getMousePosition()) ? menuButtonHoverImg : menuButtonImg, menuButtonBounds.x, menuButtonBounds.y, menuButtonBounds.width, menuButtonBounds.height, null);
             g.drawString("MENU PRINCIPAL", menuButtonBounds.x + 80, menuButtonBounds.y + 38);
         }
-
-        // --- FIN DE LA MODIFICACIÓN (REORDENADO) ---
     }
 
     private void drawScore(Graphics g) {
@@ -637,6 +713,36 @@ public class GameState extends State {
      */
     public void onRaiderAssaultFinished() {
         this.squadManager = null;
+    }
+
+    /**
+     * Callback para que el FinalBoss se "destruya" a sí mismo.
+     */
+    public void onFinalBossDefeated() {
+        this.finalBoss = null;
+    }
+
+    /**
+     * Devuelve una posición segura para que el jugador reaparezca.
+     * @return Vector2D con la posición de reaparición.
+     */
+    public Vector2D requestPlayerRespawnPosition() {
+        // Si el jefe final está activo
+        if (finalBoss != null) {
+            BossPhase phase = finalBoss.getPhase();
+
+            // Si el jefe está en Fase 2 (abajo) o en la transición 3 (subiendo)
+            if (phase == BossPhase.PHASE_2 || phase == BossPhase.TRANSITION_3) {
+                // Reaparecer ARRIBA
+                return new Vector2D(Constants.WIDTH / 2, 200);
+            } else {
+                // Reaparecer ABAJO (para Fase 1, Transición 1 y 2)
+                return new Vector2D(Constants.WIDTH / 2, 500);
+            }
+        }
+
+        // Posición por defecto si no hay jefe
+        return new Vector2D(Constants.WIDTH / 2, 320);
     }
 
     public void addScore(int value, Vector2D position) {

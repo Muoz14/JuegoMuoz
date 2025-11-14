@@ -68,58 +68,71 @@ public abstract class MovingObject extends GameObject {
                 m.Destroy(); // Destruye el meteoro
                 continue;    // El Raider (this) sobrevive y continúa
             }
-            if (m instanceof Raider && this instanceof Meteor) {
+            if ((m instanceof Raider) && this instanceof Meteor) {
                 this.Destroy(); // Destruye el meteoro (this)
                 continue;    // El Raider (m) sobrevive y continúa
             }
             // --- FIN DE LAS NUEVAS REGLAS (RAIDER) ---
 
+            // --- INICIO DE NUEVAS REGLAS (JEFE FINAL Y ESBIRRO) ---
 
-            // --- INICIO DE LA SOLUCION: HITBOX DE BURBUJA ---
-
-            // 1. Definir los radios de colision base
-            double myRadius = this.width / 2.0;
-            double theirRadius = m.width / 2.0;
-
-            // 2. Comprobar si alguno es el jugador con escudo
-            if (this instanceof Player && ((Player)this).isShielded()) {
-                // Usar un radio de escudo mas grande (ej. 70 pixeles)
-                // Tus animaciones de escudo miden ~140px, asi que 70 es un buen radio.
-                myRadius = 70.0;
-            } else if (m instanceof Player && ((Player)m).isShielded()) {
-                theirRadius = 70.0; // Usar el mismo radio
+            // Jefe/Esbirro vs Meteoros: Destruyen meteoro, ellos sobreviven
+            if ((this instanceof FinalBoss || this instanceof Minion) && m instanceof Meteor) {
+                m.Destroy();
+                continue;
+            }
+            if ((m instanceof FinalBoss || m instanceof Minion) && this instanceof Meteor) {
+                this.Destroy();
+                continue;
             }
 
-            // 3. Calcular la distancia y usar los radios (posiblemente) modificados
-            double distance = m.getCenter().subtract(getCenter()).getMagnitude();
+            // Jefe/Esbirro vs UFO: Se ignoran
+            if ((this instanceof FinalBoss || this instanceof Minion) && m instanceof Ufo) continue;
+            if ((m instanceof FinalBoss || m instanceof Minion) && this instanceof Ufo) continue;
 
-            if (distance < theirRadius + myRadius) {
-                // --- FIN DE LA SOLUCION ---
+            // Jefe/Esbirro vs Raider: Se ignoran
+            if ((this instanceof FinalBoss || this instanceof Minion) && m instanceof Raider) continue;
+            if ((m instanceof FinalBoss || m instanceof Minion) && this instanceof Raider) continue;
 
-                // --- LOGICA DE COLISION (LA QUE YA TENIAMOS) ---
+            // Láseres enemigos no dañan al Jefe, Esbirros, Raiders, o UFOs
+            if (this instanceof Laser && !((Laser)this).isPlayerLaser() &&
+                    (m instanceof FinalBoss || m instanceof Minion || m instanceof Raider || m instanceof Ufo)) {
+                continue;
+            }
+            if (m instanceof Laser && !((Laser)m).isPlayerLaser() &&
+                    (this instanceof FinalBoss || this instanceof Minion || this instanceof Raider || this instanceof Ufo)) {
+                continue;
+            }
+            // --- FIN DE NUEVAS REGLAS ---
 
-                Player shieldedPlayer = null;
-                MovingObject other = null;
 
-                if (this instanceof Player && ((Player)this).isShielded()) {
-                    shieldedPlayer = (Player) this;
-                    other = m;
-                } else if (m instanceof Player && ((Player)m).isShielded()) {
-                    shieldedPlayer = (Player) m;
-                    other = this;
-                }
+            // --- INICIO DE LÓGICA DE COLISIÓN REESTRUCTURADA ---
 
-                // ESCENARIO 1: Jugador con escudo esta involucrado
-                if (shieldedPlayer != null) {
+            // 1. LÓGICA DE ESCUDO (Prioridad alta, usa colisión circular)
+            Player shieldedPlayer = null;
+            MovingObject other = null;
 
-                    // Caso 1.1: Escudo vs Laser Enemigo
+            if (this instanceof Player && ((Player)this).isShielded()) {
+                shieldedPlayer = (Player) this;
+                other = m;
+            } else if (m instanceof Player && ((Player)m).isShielded()) {
+                shieldedPlayer = (Player) m;
+                other = this;
+            }
+
+            if (shieldedPlayer != null) {
+                double shieldRadius = 70.0;
+                double otherRadius = other.width / 2.0;
+                double distance = m.getCenter().subtract(getCenter()).getMagnitude();
+
+                if (distance < shieldRadius + otherRadius) {
+                    // Está colisionando CON EL ESCUDO
+                    // (Lógica de escudo que ya tenías)
                     if (other instanceof Laser && !((Laser)other).isPlayerLaser()) {
                         gameState.playExplosion(other.getCenter());
                         other.Destroy();
-                        return;
+                        return; // Sale de collidesWith() para este objeto 'm'
                     }
-
-                    // Caso 1.2: Escudo vs MiniBoss
                     if (other instanceof MiniBoss) {
                         shieldedPlayer.deactivateShield();
                         gameState.addMessage(new Message(
@@ -127,26 +140,39 @@ public abstract class MovingObject extends GameObject {
                         ));
                         gameState.playExplosion(shieldedPlayer.getCenter());
                         shieldedPlayer.triggerPostHitImmunity(true);
-
                         Vector2D knockback = other.getCenter().subtract(shieldedPlayer.getCenter()).normalize().scale(5);
                         other.velocity = other.velocity.add(knockback).limit(other.maxVel);
-
                         return;
                     }
-
-                    // Caso 1.3: Escudo vs Meteor o UFO
                     if (other instanceof Meteor || other instanceof Ufo) {
                         other.velocity = other.velocity.scale(-1);
                         Vector2D separation = other.getCenter().subtract(shieldedPlayer.getCenter()).normalize().scale(5);
                         other.position = other.position.add(separation);
-
                         return;
                     }
                 }
+            }
 
-                // ESCENARIO 2: Colision normal (sin escudo)
+            // 2. LÓGICA DE COLISIÓN NORMAL (Sin escudo)
+            boolean collided = false;
+
+            // Usar Bounding Box (Rectangular) si el jugador choca con un enemigo peligroso
+            if (this instanceof Player && (m instanceof FinalBoss || m instanceof MiniBoss || m instanceof Minion || m instanceof Raider)) {
+                collided = this.getBounds().intersects(m.getBounds());
+            } else if (m instanceof Player && (this instanceof FinalBoss || this instanceof MiniBoss || this instanceof Minion || this instanceof Raider)) {
+                collided = m.getBounds().intersects(this.getBounds());
+            } else {
+                // Usar Colisión Circular para todo lo demás (Meteoro vs Meteoro, Player vs Meteor, etc.)
+                double myRadius = this.width / 2.0;
+                double theirRadius = m.width / 2.0;
+                double distance = m.getCenter().subtract(getCenter()).getMagnitude();
+                collided = (distance < theirRadius + myRadius);
+            }
+
+            if (collided) {
                 objectCollision(this, m);
             }
+            // --- FIN DE LÓGICA DE COLISIÓN REESTRUCTURADA ---
         }
     }
 
@@ -156,19 +182,17 @@ public abstract class MovingObject extends GameObject {
         if (a instanceof Laser && ((Laser) a).isPlayerLaser()) b.lastHitByPlayer = true;
         if (b instanceof Laser && ((Laser) b).isPlayerLaser()) a.lastHitByPlayer = true;
 
-        // --- INICIO DE LA MODIFICACIÓN ---
         // El láser enemigo (Raider/UFO) destruye meteoritos pero el láser sobrevive
         if (a instanceof Laser && !((Laser)a).isPlayerLaser() && b instanceof Meteor) {
-            gameState.playExplosion(b.getCenter()); // <-- AÑADIDO
-            b.Destroy(); // Meteoro destruido
-            return;      // Láser (a) sobrevive
+            gameState.playExplosion(b.getCenter());
+            b.Destroy();
+            return;
         }
         if (b instanceof Laser && !((Laser)b).isPlayerLaser() && a instanceof Meteor) {
-            gameState.playExplosion(a.getCenter()); // <-- AÑADIDO
-            a.Destroy(); // Meteoro destruido
-            return;      // Láser (b) sobrevive
+            gameState.playExplosion(a.getCenter());
+            a.Destroy();
+            return;
         }
-        // --- FIN DE LA MODIFICACIÓN ---
 
         if (a instanceof Meteor && b instanceof Meteor) {
             return;
@@ -185,14 +209,42 @@ public abstract class MovingObject extends GameObject {
             return;
         }
 
-        // --- NUEVA REGLA: El láser enemigo (Raider/UFO) no daña al MiniBoss ni al UFO ---
-        // (Esto también previene que los UFOs se disparen entre ellos)
-        if (a instanceof Laser && !((Laser)a).isPlayerLaser() && (b instanceof MiniBoss || b instanceof Ufo)) {
-            return; // No hacer nada
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Regla: Jugador vs Esbirro
+        if (a instanceof Player && b instanceof Minion) {
+            gameState.playExplosion(a.getCenter());
+            a.Destroy(); // Destruye al jugador
+            return;      // Esbirro sobrevive
         }
-        if (b instanceof Laser && !((Laser)b).isPlayerLaser() && (a instanceof MiniBoss || a instanceof Ufo)) {
-            return; // No hacer nada
+        if (a instanceof Minion && b instanceof Player) {
+            gameState.playExplosion(b.getCenter());
+            b.Destroy(); // Destruye al jugador
+            return;      // Esbirro sobrevive
         }
+
+        // Regla: Jugador vs Jefe Final
+        if (a instanceof Player && b instanceof FinalBoss) {
+            gameState.playExplosion(a.getCenter());
+            a.Destroy(); // Destruye al jugador
+            return;      // Jefe Final sobrevive
+        }
+        if (a instanceof FinalBoss && b instanceof Player) {
+            gameState.playExplosion(b.getCenter());
+            b.Destroy(); // Destruye al jugador
+            return;      // Jefe Final sobrevive
+        }
+
+        // Regla: Láser enemigo vs Enemigos
+        // (Añadido FinalBoss y Minion a la regla)
+        if (a instanceof Laser && !((Laser)a).isPlayerLaser() &&
+                (b instanceof MiniBoss || b instanceof Ufo || b instanceof FinalBoss || b instanceof Minion)) {
+            return;
+        }
+        if (b instanceof Laser && !((Laser)b).isPlayerLaser() &&
+                (a instanceof MiniBoss || a instanceof Ufo || a instanceof FinalBoss || a instanceof Minion)) {
+            return;
+        }
+        // --- FIN DE LA CORRECCIÓN ---
 
         // Colisión por defecto: destruir ambos
         gameState.playExplosion(a.getCenter());

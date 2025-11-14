@@ -103,6 +103,14 @@ public class Ufo extends MovingObject {
         fireRate.update();
     }
 
+    public void pauseTimers() {
+        fireRate.pause();
+    }
+
+    public void resumeTimers() {
+        fireRate.resume();
+    }
+
     @Override
     protected void Destroy() {
 

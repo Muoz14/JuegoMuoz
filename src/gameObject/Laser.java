@@ -15,7 +15,7 @@ public class Laser extends MovingObject {
     private boolean playerLaser;
 
     // Un 'Shape' para la hitbox rectangular que puede ser rotada
-    private Shape hitbox;
+    protected Shape hitbox;
 
     public Laser(Vector2D position, Vector2D velocity, double maxVel, double angle,
                  BufferedImage texture, GameState gameState, boolean playerLaser) {
@@ -92,17 +92,18 @@ public class Laser extends MovingObject {
                 continue;
             }
 
-            // El MiniBoss tiene su propia logica de colision (collidesWithLasers)
-            if (m instanceof MiniBoss) {
+            // --- INICIO DE LA CORRECCIÓN ---
+            // El MiniBoss y el FinalBoss manejan sus PROPIAS colisiones.
+            // El láser no debe intentar destruirlos.
+            if (m instanceof MiniBoss || m instanceof FinalBoss) {
                 continue;
             }
+            // --- FIN DE LA CORRECCIÓN ---
 
-            // --- INICIO DE LA SOLUCION ---
             // Ignorar los power-ups para que no sean destruidos
             if (m instanceof PowerUp) {
                 continue;
             }
-            // --- FIN DE LA SOLUCION ---
 
             // Comprobar colision rectangular contra los 'bounds' del otro objeto
             if (this.hitbox.intersects(m.getBounds())) {

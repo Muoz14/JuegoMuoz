@@ -49,7 +49,7 @@ public class RaiderSquadManager {
 
         // Mensaje inicial
         Message raiderMsg = new Message(new Vector2D(Constants.WIDTH / 2, 100),
-                false, "¡ESCUADRÓN ENEMIGO!", Color.ORANGE, true, Assets.fontBig, gameState);
+                false, "¡ESCUADRÓN ENEMIGO DETECTADO!", Color.ORANGE, true, Assets.fontBig, gameState);
         raiderMsg.setLifespan(4000);
         gameState.addMessage(raiderMsg);
     }
@@ -192,4 +192,13 @@ public class RaiderSquadManager {
             gameState.addMessage(cleanupMsg);
         }).start();
     }
+
+    public void pauseTimers() {
+        timer.pause();
+    }
+
+    public void resumeTimers() {
+        timer.resume();
+    }
+
 }

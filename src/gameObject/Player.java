@@ -179,7 +179,10 @@ public class Player extends MovingObject {
     private void resetValues() {
         angle = 0;
         velocity = new Vector2D();
-        position = new Vector2D(560, 320);
+        // --- INICIO DE LA MODIFICACIÓN ---
+        // Ya no es fijo. Pregunta al GameState dónde reaparecer.
+        position = gameState.requestPlayerRespawnPosition();
+        // --- FIN DE LA MODIFICACIÓN ---
         gameState.subtractLife();
     }
 
@@ -338,7 +341,26 @@ public class Player extends MovingObject {
         scoreMultiplierTimer.reset();
     }
 
-    // --- INICIO DE NUEVOS MÉTODOS ---
+    /**
+     * Activa todos los power-ups a la vez, con una duración fija.
+     * Usado como recompensa por vencer al jefe.
+     * @param duration Duración en milisegundos.
+     */
+    public void activateAllPowerUps(long duration) {
+        // Activa el escudo Nivel 3 (Oro)
+        activateShield(PowerUpType.GOLD, duration);
+
+        // Activa Disparo Rápido
+        activateRapidFire(PowerUpType.RAPID_FIRE, duration);
+
+        // Activa Multi-Disparo
+        activateMultiShot(PowerUpType.MULTI_SHOT, duration);
+
+        // Activa Puntos Dobles
+        activateScoreMultiplier(PowerUpType.DOUBLE_POINTS, duration);
+    }
+
+    // --- Métodos de Pausa/Reanudar Timers ---
 
     /**
      * Pausa todos los cronómetros internos del jugador.
@@ -371,8 +393,6 @@ public class Player extends MovingObject {
         spawnTime.resume();
         flickerTime.resume();
     }
-
-    // --- FIN DE NUEVOS MÉTODOS ---
 
     // --- Getters para el HUD ---
     public boolean isShielded() {
