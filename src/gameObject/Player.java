@@ -264,17 +264,15 @@ public class Player extends MovingObject {
         activateShield(type, type.duration);
     }
     public void activateShield(PowerUpType type, long duration) {
-        // --- INICIO DE LA MODIFICACION (Stacking) ---
         long newTotalDuration = duration;
         if (isShielded && shieldTimer.isRunning()) {
             newTotalDuration += shieldTimer.getTimeRemaining();
         }
-        // --- FIN DE LA MODIFICACION ---
 
         isShielded = true;
-        shieldTimer.run(newTotalDuration); // Usa la duracion (posiblemente sumada)
+        shieldTimer.run(newTotalDuration);
 
-        if (shieldAnimation == null) { // Solo crear animacion si no existe
+        if (shieldAnimation == null) {
             shieldAnimation = new Animation(
                     Assets.shield_effect, 150, new Vector2D(), true
             );
@@ -283,7 +281,7 @@ public class Player extends MovingObject {
     public void deactivateShield() {
         isShielded = false;
         shieldTimer.reset();
-        shieldAnimation = null; // Destruir animacion al desactivar
+        shieldAnimation = null;
     }
 
     // --- DISPARO RAPIDO ---
@@ -291,15 +289,13 @@ public class Player extends MovingObject {
         activateRapidFire(type, type.duration);
     }
     public void activateRapidFire(PowerUpType type, long duration) {
-        // --- INICIO DE LA MODIFICACION (Stacking) ---
         long newTotalDuration = duration;
         if (isRapidFire && rapidFireTimer.isRunning()) {
             newTotalDuration += rapidFireTimer.getTimeRemaining();
         }
-        // --- FIN DE LA MODIFICACION ---
 
         isRapidFire = true;
-        rapidFireTimer.run(newTotalDuration); // Usa la duracion sumada
+        rapidFireTimer.run(newTotalDuration);
     }
     public void deactivateRapidFire() {
         isRapidFire = false;
@@ -311,15 +307,13 @@ public class Player extends MovingObject {
         activateMultiShot(type, type.duration);
     }
     public void activateMultiShot(PowerUpType type, long duration) {
-        // --- INICIO DE LA MODIFICACION (Stacking) ---
         long newTotalDuration = duration;
         if (isMultiShot && multiShotTimer.isRunning()) {
             newTotalDuration += multiShotTimer.getTimeRemaining();
         }
-        // --- FIN DE LA MODIFICACION ---
 
         isMultiShot = true;
-        multiShotTimer.run(newTotalDuration); // Usa la duracion sumada
+        multiShotTimer.run(newTotalDuration);
     }
     public void deactivateMultiShot() {
         isMultiShot = false;
@@ -331,20 +325,54 @@ public class Player extends MovingObject {
         activateScoreMultiplier(type, type.duration);
     }
     public void activateScoreMultiplier(PowerUpType type, long duration) {
-        // --- INICIO DE LA MODIFICACION (Stacking) ---
         long newTotalDuration = duration;
         if (isScoreMultiplier && scoreMultiplierTimer.isRunning()) {
             newTotalDuration += scoreMultiplierTimer.getTimeRemaining();
         }
-        // --- FIN DE LA MODIFICACION ---
 
         isScoreMultiplier = true;
-        scoreMultiplierTimer.run(newTotalDuration); // Usa la duracion sumada
+        scoreMultiplierTimer.run(newTotalDuration);
     }
     public void deactivateScoreMultiplier() {
         isScoreMultiplier = false;
         scoreMultiplierTimer.reset();
     }
+
+    // --- INICIO DE NUEVOS MÉTODOS ---
+
+    /**
+     * Pausa todos los cronómetros internos del jugador.
+     */
+    public void pauseTimers() {
+        // Timers de Power-ups
+        shieldTimer.pause();
+        rapidFireTimer.pause();
+        multiShotTimer.pause();
+        scoreMultiplierTimer.pause();
+
+        // Timers internos
+        fireRate.pause();
+        spawnTime.pause();
+        flickerTime.pause();
+    }
+
+    /**
+     * Reanuda todos los cronómetros internos del jugador.
+     */
+    public void resumeTimers() {
+        // Timers de Power-ups
+        shieldTimer.resume();
+        rapidFireTimer.resume();
+        multiShotTimer.resume();
+        scoreMultiplierTimer.resume();
+
+        // Timers internos
+        fireRate.resume();
+        spawnTime.resume();
+        flickerTime.resume();
+    }
+
+    // --- FIN DE NUEVOS MÉTODOS ---
 
     // --- Getters para el HUD ---
     public boolean isShielded() {

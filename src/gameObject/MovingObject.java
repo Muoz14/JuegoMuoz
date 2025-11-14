@@ -45,7 +45,7 @@ public abstract class MovingObject extends GameObject {
             if (m.equals(this)) continue;
             if (m.isSpawnImmune()) continue;
 
-            // --- REGLAS DE IGNORAR ---
+            // --- REGLAS DE IGNORAR (MODIFICADAS) ---
             if (this instanceof Ufo && m instanceof Laser && !((Laser) m).isPlayerLaser()) continue;
             if (this instanceof Player && m instanceof Laser && ((Laser) m).isPlayerLaser()) continue;
             if ((this instanceof Ufo && m instanceof Meteor) || (m instanceof Ufo && this instanceof Meteor)) continue;
@@ -53,6 +53,26 @@ public abstract class MovingObject extends GameObject {
             if ((this instanceof MiniBoss && m instanceof Meteor) || (m instanceof MiniBoss && this instanceof Meteor)) continue;
             if ((this instanceof Ufo && m instanceof MiniBoss) || (this instanceof MiniBoss && m instanceof Ufo)) continue;
             if (this instanceof PowerUp || m instanceof PowerUp) continue;
+
+            // --- INICIO DE LAS NUEVAS REGLAS (RAIDER) ---
+            // El Raider ignora al UFO y al MiniBoss (y viceversa)
+            if (this instanceof Raider && (m instanceof Ufo || m instanceof MiniBoss)) continue;
+            if (m instanceof Raider && (this instanceof Ufo || this instanceof MiniBoss)) continue;
+
+            // El láser enemigo ignora al Raider (ya que es disparado por él)
+            if (this instanceof Laser && !((Laser)this).isPlayerLaser() && m instanceof Raider) continue;
+            if (m instanceof Laser && !((Laser)m).isPlayerLaser() && this instanceof Raider) continue;
+
+            // El Raider destruye meteoros al contacto, pero el Raider no se destruye
+            if (this instanceof Raider && m instanceof Meteor) {
+                m.Destroy(); // Destruye el meteoro
+                continue;    // El Raider (this) sobrevive y continúa
+            }
+            if (m instanceof Raider && this instanceof Meteor) {
+                this.Destroy(); // Destruye el meteoro (this)
+                continue;    // El Raider (m) sobrevive y continúa
+            }
+            // --- FIN DE LAS NUEVAS REGLAS (RAIDER) ---
 
 
             // --- INICIO DE LA SOLUCION: HITBOX DE BURBUJA ---
@@ -136,6 +156,20 @@ public abstract class MovingObject extends GameObject {
         if (a instanceof Laser && ((Laser) a).isPlayerLaser()) b.lastHitByPlayer = true;
         if (b instanceof Laser && ((Laser) b).isPlayerLaser()) a.lastHitByPlayer = true;
 
+        // --- INICIO DE LA MODIFICACIÓN ---
+        // El láser enemigo (Raider/UFO) destruye meteoritos pero el láser sobrevive
+        if (a instanceof Laser && !((Laser)a).isPlayerLaser() && b instanceof Meteor) {
+            gameState.playExplosion(b.getCenter()); // <-- AÑADIDO
+            b.Destroy(); // Meteoro destruido
+            return;      // Láser (a) sobrevive
+        }
+        if (b instanceof Laser && !((Laser)b).isPlayerLaser() && a instanceof Meteor) {
+            gameState.playExplosion(a.getCenter()); // <-- AÑADIDO
+            a.Destroy(); // Meteoro destruido
+            return;      // Láser (b) sobrevive
+        }
+        // --- FIN DE LA MODIFICACIÓN ---
+
         if (a instanceof Meteor && b instanceof Meteor) {
             return;
         }
@@ -151,7 +185,17 @@ public abstract class MovingObject extends GameObject {
             return;
         }
 
-        gameState.playExplosion(getCenter());
+        // --- NUEVA REGLA: El láser enemigo (Raider/UFO) no daña al MiniBoss ni al UFO ---
+        // (Esto también previene que los UFOs se disparen entre ellos)
+        if (a instanceof Laser && !((Laser)a).isPlayerLaser() && (b instanceof MiniBoss || b instanceof Ufo)) {
+            return; // No hacer nada
+        }
+        if (b instanceof Laser && !((Laser)b).isPlayerLaser() && (a instanceof MiniBoss || a instanceof Ufo)) {
+            return; // No hacer nada
+        }
+
+        // Colisión por defecto: destruir ambos
+        gameState.playExplosion(a.getCenter());
         a.Destroy();
         b.Destroy();
     }

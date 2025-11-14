@@ -71,6 +71,8 @@ public class Assets {
     public static BufferedImage menuBg_Static;
     public static BufferedImage menuStarsSmall1, menuStarsSmall2, menuStarsBig1, menuStarsBig2;
 
+    public static BufferedImage raider;
+
     public static void init(){
 
         // Carga de fuentes PRIMERO, porque la pantalla de carga las usa
@@ -183,6 +185,8 @@ public class Assets {
         menuStarsSmall2 = Loader.ImageLoader("/menu_bg/starsSmall2.png");
         menuStarsBig1 = Loader.ImageLoader("/menu_bg/starsBig1.png");
         menuStarsBig2 = Loader.ImageLoader("/menu_bg/starsBig2.png");
+
+        raider = Loader.ImageLoader("/ships/enemie1.png");
 
     }
 }

@@ -2,6 +2,7 @@ package states;
 
 import gameObject.Constants;
 import graphics.Assets;
+import graphics.MenuBackground;
 import graphics.SoundManager;
 import input.KeyBoard;
 import input.MouseInput;
@@ -26,8 +27,12 @@ public class SettingsState extends State {
     private boolean previousPausedState;
     private GameState gameStateRef;
 
+    private MenuBackground menuBackground;
+
     public SettingsState(State previousState) {
         this.previousState = previousState;
+
+        this.menuBackground = new MenuBackground();
 
         buttonNormal = Assets.buttonS1;
         buttonHover = Assets.buttonS2;
@@ -79,7 +84,6 @@ public class SettingsState extends State {
     }
 
     private void applyVolumeChange() {
-        // (Usamos el Asset estatico ahora)
         if (gameStateRef != null && Assets.backgroundMusic != null) {
             Assets.backgroundMusic.setVolume(SettingsData.getVolume());
         }
@@ -88,6 +92,7 @@ public class SettingsState extends State {
 
     @Override
     public void update() {
+        menuBackground.update(); // ACTUALIZAR EL FONDO
         MouseInput.update();
         Point mouse = MouseInput.getMousePosition();
 
@@ -129,14 +134,12 @@ public class SettingsState extends State {
             State.changeState(previousState);
             MouseInput.releaseClick();
         }
-
-        KeyBoard.endFrame();
     }
 
     @Override
     public void draw(Graphics g) {
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, Constants.WIDTH, Constants.HEIGHT);
+
+        menuBackground.draw(g); // DIBUJAR EL FONDO
 
         g.setColor(Color.WHITE);
         g.setFont(Assets.fontBig);

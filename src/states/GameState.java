@@ -9,8 +9,7 @@ import graphics.SoundManager;
 import input.KeyBoard;
 import input.MouseInput;
 import math.Vector2D;
-import gameObject.PlayerData;
-import gameObject.ScoreManager;
+
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
@@ -30,7 +29,7 @@ public class GameState extends State {
 
     public int meteors;
     private int waves = 1;
-    private int lives = 5;
+    private int lives = 100;
 
     private int score = 0;
 
@@ -38,6 +37,9 @@ public class GameState extends State {
     private boolean waveCleared = false;
     private long waveClearTime = 0;
     private boolean nextWaveStarting = false;
+
+    // Variable específica para el manager, en lugar de meterlo en la lista
+    private RaiderSquadManager squadManager = null;
 
     private boolean paused = false;
     private boolean startingCountdown = true;
@@ -130,6 +132,12 @@ public class GameState extends State {
 
         if (countdownValue <= 0) {
             startingCountdown = false;
+
+            // --- INICIO DE LA MODIFICACIÓN ---
+            // ¡Reanudar timers AQUÍ, cuando el contador termina!
+            player.resumeTimers();
+            // --- FIN DE LA MODIFICACIÓN ---
+
             if (!firstWaveStarted) {
                 startWave();
                 firstWaveStarted = true;
@@ -248,7 +256,7 @@ public class GameState extends State {
         else if (rand < 0.25) {
             return PowerUpType.EXTRA_LIFE;
         }
-        // 10% Aleatorio (0.25 -> 0.35)  <--- NUEVO
+        // 10% Aleatorio (0.25 -> 0.35)
         else if (rand < 0.35) {
             return PowerUpType.RANDOM_POWER;
         }
@@ -282,6 +290,7 @@ public class GameState extends State {
             if (!anim.isRunning()) explosion.remove(i);
         }
 
+        // --- INICIO DE LA MODIFICACIÓN (PAUSA) ---
         // Pausa
         if (pauseButtonBounds.contains(mouse) && MouseInput.isPressed()) {
             Assets.buttonSelected.play();
@@ -290,6 +299,7 @@ public class GameState extends State {
             MouseInput.releaseClick();
             pauseMusic();
             SoundManager.getInstance().pauseAll();
+            player.pauseTimers();
         }
         boolean escNow = KeyBoard.isKeyPressed(KeyEvent.VK_ESCAPE);
         if (escNow && !escPressedLastFrame) {
@@ -298,12 +308,15 @@ public class GameState extends State {
             if (paused) {
                 pauseMusic();
                 SoundManager.getInstance().pauseAll();
+                player.pauseTimers();
             } else {
-                startCountdown();
+                startCountdown(); // <-- Solo inicia el contador
                 resumeMusic();
+                // (Se eliminó player.resumeTimers())
             }
         }
         escPressedLastFrame = escNow;
+        // --- FIN DE LA MODIFICACIÓN (PAUSA) ---
 
         if (paused && showPauseMenu) {
             handlePauseMenu(mouse);
@@ -318,8 +331,17 @@ public class GameState extends State {
 
         // ------------------ Actualizar objetos ------------------
         background.update();
+
+        // Actualizar todos los MovingObject
         for (int i = 0; i < movingObjects.size(); i++) {
-            movingObjects.get(i).update();
+            if (i < movingObjects.size()) {
+                movingObjects.get(i).update();
+            }
+        }
+
+        // Actualizar el Squad Manager (si existe)
+        if (squadManager != null) {
+            squadManager.update();
         }
 
         // Reaparicion del player
@@ -355,9 +377,10 @@ public class GameState extends State {
             paused = false;
             showPauseMenu = false;
             Assets.buttonSelected.play();
-            startCountdown();
+            startCountdown(); // <-- Solo inicia el contador
             resumeMusic();
             SoundManager.getInstance().resumeAll();
+            // (Se eliminó player.resumeTimers())
             MouseInput.releaseClick();
         }
         if (settingsButtonBounds.contains(mouse) && MouseInput.isPressed()) {
@@ -374,24 +397,33 @@ public class GameState extends State {
     }
 
     private void handleWaveLogic() {
+
+        // 1. Contar enemigos activos
         boolean hayMeteoros = false, hayMiniBoss = false;
+        boolean hayRaiderEvent = (squadManager != null);
+
         for (MovingObject obj : movingObjects) {
             if (obj instanceof Meteor) hayMeteoros = true;
             if (obj instanceof MiniBoss) hayMiniBoss = true;
         }
 
-        if (!hayMeteoros && !hayMiniBoss && firstWaveStarted && !waveCleared && !nextWaveStarting) {
+        // 2. Lógica de reabastecimiento de meteoros
+        if ((hayRaiderEvent || hayMiniBoss) && !hayMeteoros && !nextWaveStarting) {
+            nextWaveStarting = true;
+            int subWaveSize = (waves / 2) + 1;
+            spawnMeteorSubWave(subWaveSize);
+        }
+
+        // 3. Lógica de Oleada Completada
+        if (!hayMeteoros && !hayMiniBoss && !hayRaiderEvent && firstWaveStarted && !waveCleared && !nextWaveStarting) {
             waveCleared = true;
             waveClearTime = System.currentTimeMillis();
             Message completeMsg = new Message(new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2), false, "OLEADA COMPLETADA!", Color.WHITE, true, Assets.fontBig, this);
             completeMsg.setLifespan(3000);
             addMessage(completeMsg);
         }
-        else if (!hayMeteoros && hayMiniBoss && firstWaveStarted && !waveCleared && !nextWaveStarting) {
-            nextWaveStarting = true;
-            spawnMeteorSubWave(waves);
-        }
 
+        // 4. Lógica para iniciar la siguiente oleada
         if (waveCleared && !nextWaveStarting) {
             long elapsed = System.currentTimeMillis() - waveClearTime;
             if (elapsed >= 3000) {
@@ -407,7 +439,9 @@ public class GameState extends State {
                     try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
                     startWave();
                     nextWaveStarting = false;
-                    if (waves % 2 == 0) {
+
+                    // --- SPAWN MINI-BOSS (Cada 3 oleadas) ---
+                    if (waves % 3 == 0) {
                         try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
                         ShipData selectedShip = ShipLibrary.getSelectedShip();
                         int numCannons = selectedShip.getGunOffsets().size();
@@ -419,6 +453,14 @@ public class GameState extends State {
                         bossMsg.setLifespan(4000);
                         addMessage(bossMsg);
                     }
+
+                    // --- SPAWN RAIDER SQUAD MANAGER (Cada 2 oleadas, excepto oleada 1) ---
+                    if (waves > 1 && waves % 2 == 0) {
+                        try { Thread.sleep(4000); } catch (InterruptedException ignored) {}
+
+                        squadManager = new RaiderSquadManager(this);
+                    }
+
                 }).start();
             }
         }
@@ -442,7 +484,7 @@ public class GameState extends State {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } finally {
-                nextWaveStarting = false;
+                nextWaveStarting = false; // Permitir que la lógica se ejecute de nuevo
             }
         }).start();
     }
@@ -460,31 +502,12 @@ public class GameState extends State {
         }
         g.drawImage(pauseButtonImg, pauseButtonBounds.x, pauseButtonBounds.y, null);
 
-        if (startingCountdown && countdownValue > 0) {
-            g.setFont(Assets.fontBig);
-            g.setColor(Color.WHITE);
-            String text = countdownValue + "!";
-            int textWidth = g.getFontMetrics().stringWidth(text);
-            g.drawString(text, (Constants.WIDTH - textWidth) / 2, Constants.HEIGHT / 2);
-        }
+        // --- INICIO DE LA MODIFICACIÓN (REORDENADO) ---
 
-        if (paused && showPauseMenu) {
-            g2d.setColor(new Color(0, 0, 0, (int) (255 * pauseOverlayAlpha)));
-            g2d.fillRect(0, 0, Constants.WIDTH, Constants.HEIGHT);
-            g.drawImage(resumeButtonBounds.contains(MouseInput.getMousePosition()) ? resumeButtonHoverImg : resumeButtonImg, resumeButtonBounds.x, resumeButtonBounds.y, resumeButtonBounds.width, resumeButtonBounds.height, null);
-            g.setColor(Color.BLACK);
-            g.setFont(Assets.fontMed);
-            g.drawString("REANUDAR", resumeButtonBounds.x + 120, resumeButtonBounds.y + 38);
-            g.drawImage(settingsButtonBounds.contains(MouseInput.getMousePosition()) ? settingsButtonHoverImg : settingsButtonImg, settingsButtonBounds.x, settingsButtonBounds.y, settingsButtonBounds.width, settingsButtonBounds.height, null);
-            g.drawString("CONFIGURACIONES", settingsButtonBounds.x + 60, settingsButtonBounds.y + 38);
-            g.drawImage(menuButtonBounds.contains(MouseInput.getMousePosition()) ? menuButtonHoverImg : menuButtonImg, menuButtonBounds.x, menuButtonBounds.y, menuButtonBounds.width, menuButtonBounds.height, null);
-            g.drawString("MENU PRINCIPAL", menuButtonBounds.x + 80, menuButtonBounds.y + 38);
-        }
-
+        // 1. Dibujar el HUD (Score, Vidas, Barras de Power-up) PRIMERO
         drawScore(g);
         drawLives(g);
 
-        // --- DIBUJO DINAMICO DEL HUD ---
         if (player != null) {
             int activePowerUps = 0;
             if (player.isShielded()) {
@@ -500,6 +523,32 @@ public class GameState extends State {
                 drawPowerUpBar(g, player.getScoreMultiplierTimeRemaining(), "PUNTOS X2", new Color(255, 175, 0), activePowerUps++);
             }
         }
+
+        // 2. Dibujar el Countdown (si está activo)
+        if (startingCountdown && countdownValue > 0) {
+            g.setFont(Assets.fontBig);
+            g.setColor(Color.WHITE);
+            String text = countdownValue + "!";
+            int textWidth = g.getFontMetrics().stringWidth(text);
+            g.drawString(text, (Constants.WIDTH - textWidth) / 2, Constants.HEIGHT / 2);
+        }
+
+        // 3. Dibujar el menú de pausa (si está activo) ÚLTIMO
+        // Esto dibujará el fondo difuminado ENCIMA del HUD
+        if (paused && showPauseMenu) {
+            g2d.setColor(new Color(0, 0, 0, (int) (255 * pauseOverlayAlpha)));
+            g2d.fillRect(0, 0, Constants.WIDTH, Constants.HEIGHT);
+            g.drawImage(resumeButtonBounds.contains(MouseInput.getMousePosition()) ? resumeButtonHoverImg : resumeButtonImg, resumeButtonBounds.x, resumeButtonBounds.y, resumeButtonBounds.width, resumeButtonBounds.height, null);
+            g.setColor(Color.BLACK);
+            g.setFont(Assets.fontMed);
+            g.drawString("REANUDAR", resumeButtonBounds.x + 120, resumeButtonBounds.y + 38);
+            g.drawImage(settingsButtonBounds.contains(MouseInput.getMousePosition()) ? settingsButtonHoverImg : settingsButtonImg, settingsButtonBounds.x, settingsButtonBounds.y, settingsButtonBounds.width, settingsButtonBounds.height, null);
+            g.drawString("CONFIGURACIONES", settingsButtonBounds.x + 60, settingsButtonBounds.y + 38);
+            g.drawImage(menuButtonBounds.contains(MouseInput.getMousePosition()) ? menuButtonHoverImg : menuButtonImg, menuButtonBounds.x, menuButtonBounds.y, menuButtonBounds.width, menuButtonBounds.height, null);
+            g.drawString("MENU PRINCIPAL", menuButtonBounds.x + 80, menuButtonBounds.y + 38);
+        }
+
+        // --- FIN DE LA MODIFICACIÓN (REORDENADO) ---
     }
 
     private void drawScore(Graphics g) {
@@ -562,7 +611,6 @@ public class GameState extends State {
 
             // 2. Añadir la puntuación al ScoreManager
             ScoreManager.addScore(playerName, score);
-            // (addScore ya llama a saveScores, así que estamos cubiertos)
 
             stopMusic();
             State.changeState(new GameOverState(score, waves));
@@ -582,6 +630,13 @@ public class GameState extends State {
         this.paused = paused;
         if (paused) pauseMusic();
         else resumeMusic();
+    }
+
+    /**
+     * Callback para que el RaiderSquadManager se "destruya" a sí mismo.
+     */
+    public void onRaiderAssaultFinished() {
+        this.squadManager = null;
     }
 
     public void addScore(int value, Vector2D position) {

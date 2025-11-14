@@ -52,5 +52,10 @@ public class Constants {
 
     public static final String EXIT = "SALIR";
 
+    // Propiedades del Raider (Nuevo enemigo)
+    public static final double RAIDER_MAX_VEL = 4.0;
+    public static final long RAIDER_FIRE_RATE = 1500; // Mas lento que el UFO
+    public static final int RAIDER_SCORE = 100;
+
 
 }
