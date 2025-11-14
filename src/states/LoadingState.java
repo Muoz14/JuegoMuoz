@@ -5,7 +5,7 @@ import gameObject.ShipLibrary;
 import graphics.Assets;
 import graphics.Text;
 import math.Vector2D;
-
+import gameObject.ScoreManager;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -34,6 +34,9 @@ public class LoadingState extends State {
 
             loadingStatus = "CARGANDO NAVES...";
             ShipLibrary.init();
+
+            loadingStatus = "CARGANDO PUNTUACIONES...";
+            ScoreManager.loadScores();
 
             loadingStatus = "CARGA COMPLETA!";
 

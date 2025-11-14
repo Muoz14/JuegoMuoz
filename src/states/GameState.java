@@ -9,7 +9,8 @@ import graphics.SoundManager;
 import input.KeyBoard;
 import input.MouseInput;
 import math.Vector2D;
-
+import gameObject.PlayerData;
+import gameObject.ScoreManager;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
@@ -29,7 +30,7 @@ public class GameState extends State {
 
     public int meteors;
     private int waves = 1;
-    private int lives = 100;
+    private int lives = 5;
 
     private int score = 0;
 
@@ -271,7 +272,6 @@ public class GameState extends State {
 
     @Override
     public void update() {
-        KeyBoard.update();
         MouseInput.update();
         Point mouse = MouseInput.getMousePosition();
 
@@ -556,6 +556,14 @@ public class GameState extends State {
     public void subtractLife() {
         lives--;
         if (lives <= 0) {
+
+            // 1. Obtener el nombre del jugador
+            String playerName = PlayerData.getCurrentPlayerName();
+
+            // 2. Añadir la puntuación al ScoreManager
+            ScoreManager.addScore(playerName, score);
+            // (addScore ya llama a saveScores, así que estamos cubiertos)
+
             stopMusic();
             State.changeState(new GameOverState(score, waves));
             Assets.gameOver.play();

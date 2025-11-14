@@ -89,7 +89,6 @@ public class SettingsState extends State {
     @Override
     public void update() {
         MouseInput.update();
-        KeyBoard.update();
         Point mouse = MouseInput.getMousePosition();
 
         if (MouseInput.isPressed() && volumeBarBounds.contains(mouse)) {

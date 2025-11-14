@@ -3,6 +3,7 @@ package states;
 import gameObject.ShipLibrary;
 import gameObject.ShipData;
 import graphics.Assets;
+import graphics.MenuBackground;
 import input.KeyBoard;
 import ui.Action;
 import ui.Button;
@@ -17,6 +18,8 @@ public class ShipSelectionState extends State {
     private ArrayList<Button> buttons;
     private int selectedShipIndex = 0;
     private int selectedLaserIndex = 0;
+
+    private MenuBackground menuBackground;
 
     // Variables para ajustar posiciones de texto e imagen y laserPreview
     private int textOffsetX = -100;
@@ -40,6 +43,8 @@ public class ShipSelectionState extends State {
 
     public ShipSelectionState() {
 
+        menuBackground = new MenuBackground();
+
         buttons = new ArrayList<>();
 
         int buttonWidth = Assets.buttonS1.getWidth();
@@ -58,7 +63,10 @@ public class ShipSelectionState extends State {
                 Assets.buttonSelected.play();
                 ShipLibrary.setSelectedShip(selectedShipIndex);
                 ShipLibrary.setSelectedLaser(selectedLaserIndex);
-                State.changeState(new GameState());
+
+                // --- INICIO DE LA MODIFICACIÓN ---
+                State.changeState(new NameInputState());
+                // --- FIN DE LA MODIFICACIÓN ---
             }
         }));
 
@@ -75,6 +83,8 @@ public class ShipSelectionState extends State {
 
     @Override
     public void update() {
+
+        menuBackground.update();
 
         for (Button b : buttons) {
             b.update();
@@ -118,6 +128,8 @@ public class ShipSelectionState extends State {
     @Override
     public void draw(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
+
+        menuBackground.draw(g);
 
         int shipPreviewWidth = 110;   // ancho deseado de la nave (ajustalo a gusto)
         int shipPreviewHeight = 100;  // alto deseado

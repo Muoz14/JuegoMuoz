@@ -2,9 +2,7 @@ package states;
 
 import gameObject.*;
 import graphics.Assets;
-// --- INICIO DE LA MODIFICACIÓN ---
-import graphics.MenuBackground; // Importar la nueva clase
-// --- FIN DE LA MODIFICACIÓN ---
+import graphics.MenuBackground; // Importar
 import input.MouseInput;
 import math.Vector2D;
 import ui.Action;
@@ -20,25 +18,23 @@ public class MenuState extends State {
     private ArrayList<MenuMeteor> meteors;
     private ArrayList<MenuExplosion> explosions;
 
-    // --- INICIO DE LA MODIFICACIÓN ---
     private MenuBackground menuBackground; // Objeto para el fondo parallax
-    // --- FIN DE LA MODIFICACIÓN ---
 
     public MenuState() {
         buttons = new ArrayList<>();
         meteors = new ArrayList<>();
         explosions = new ArrayList<>();
 
-        // --- INICIO DE LA MODIFICACIÓN ---
         menuBackground = new MenuBackground(); // Instanciar el fondo
-        // --- FIN DE LA MODIFICACIÓN ---
 
-        // ------------------ BOTONES ------------------
+        // ------------------ BOTONES (MODIFICADO) ------------------
         int buttonWidth = Assets.buttonS1.getWidth();
         int buttonHeight = Assets.buttonS1.getHeight();
-        final int SPACING = 15;
+        final int SPACING = 20; // Espacio entre botones
         int centerX = Constants.WIDTH / 2 - buttonWidth / 2;
-        final int TOTAL_GROUP_HEIGHT = 5 * buttonHeight + 4 * SPACING;
+
+        // 3 botones principales
+        final int TOTAL_GROUP_HEIGHT = 3 * buttonHeight + 2 * SPACING;
         final int START_Y = Constants.HEIGHT / 2 - TOTAL_GROUP_HEIGHT / 2;
 
         // Boton JUGAR
@@ -46,7 +42,7 @@ public class MenuState extends State {
             @Override
             public void doAction() {
                 Assets.buttonSelected.play();
-                State.changeState(new GameState());
+                State.changeState(new ShipSelectionState());
             }
         }));
 
@@ -55,30 +51,12 @@ public class MenuState extends State {
             @Override
             public void doAction() {
                 Assets.buttonSelected.play();
-                System.out.println("ABRIR PUNTUACIONES");
-            }
-        }));
-
-        // Boton INGRESAR NOMBRE
-        buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y + 2 * (buttonHeight + SPACING), Constants.NAME, new Action() {
-            @Override
-            public void doAction() {
-                Assets.buttonSelected.play();
-                System.out.println("ABRIR NOMBRE");
-            }
-        }));
-
-        // Boton NAVES
-        buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y + 3 * (buttonHeight + SPACING), Constants.SHIP, new Action() {
-            @Override
-            public void doAction() {
-                Assets.buttonSelected.play();
-                State.changeState(new ShipSelectionState());
+                State.changeState(new ScoreState());
             }
         }));
 
         // Boton AJUSTES
-        buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y + 4 * (buttonHeight + SPACING), Constants.SETTINGS, new Action() {
+        buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y + 2 * (buttonHeight + SPACING), Constants.SETTINGS, new Action() {
             @Override
             public void doAction() {
                 Assets.buttonSelected.play();
@@ -119,10 +97,7 @@ public class MenuState extends State {
     @Override
     public void update() {
         MouseInput.update();
-
-        // --- INICIO DE LA MODIFICACIÓN ---
         menuBackground.update(); // Actualizar el fondo
-        // --- FIN DE LA MODIFICACIÓN ---
 
         // Actualizar botones
         for (Button b : buttons) {
@@ -183,14 +158,8 @@ public class MenuState extends State {
 
     @Override
     public void draw(Graphics g) {
-        // --- INICIO DE LA MODIFICACIÓN ---
         // Fondo
         menuBackground.draw(g); // Dibujar el fondo parallax
-
-        // Ya no necesitamos el fondo negro estático:
-        // g.setColor(Color.BLACK);
-        // g.fillRect(0, 0, Constants.WIDTH, Constants.HEIGHT);
-        // --- FIN DE LA MODIFICACIÓN ---
 
         // Dibujar meteoritos
         for (MenuMeteor m : meteors) {
