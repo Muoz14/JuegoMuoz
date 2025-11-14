@@ -2,7 +2,11 @@ package states;
 
 import gameObject.Constants;
 import graphics.Assets;
+// --- INICIO DE LA MODIFICACIÓN ---
 import graphics.MenuBackground;
+import graphics.Text; // <-- 1. IMPORTAR TEXT
+import math.Vector2D; // <-- 2. IMPORTAR VECTOR2D
+// --- FIN DE LA MODIFICACIÓN ---
 import graphics.SoundManager;
 import input.KeyBoard;
 import input.MouseInput;
@@ -92,7 +96,7 @@ public class SettingsState extends State {
 
     @Override
     public void update() {
-        menuBackground.update(); // ACTUALIZAR EL FONDO
+        menuBackground.update();
         MouseInput.update();
         Point mouse = MouseInput.getMousePosition();
 
@@ -128,7 +132,9 @@ public class SettingsState extends State {
         if (backButtonBounds.contains(mouse) && MouseInput.isPressed()) {
             if (gameStateRef != null) {
                 gameStateRef.setPaused(previousPausedState);
-                SoundManager.getInstance().resumeAll();
+                if (!previousPausedState) { // Solo reanudar si no estaba pausado antes
+                    SoundManager.getInstance().resumeAll();
+                }
             }
             Assets.buttonSelected.play();
             State.changeState(previousState);
@@ -139,26 +145,27 @@ public class SettingsState extends State {
     @Override
     public void draw(Graphics g) {
 
-        menuBackground.draw(g); // DIBUJAR EL FONDO
+        menuBackground.draw(g);
+        Graphics2D g2d = (Graphics2D) g; // <-- 3. Usar g2d
 
-        g.setColor(Color.WHITE);
-        g.setFont(Assets.fontBig);
-        g.drawString("CONFIGURACIONES", Constants.WIDTH / 2 - 200, 100);
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(Assets.fontBig);
+        g2d.drawString("CONFIGURACIONES", Constants.WIDTH / 2 - 200, 100);
 
-        g.setFont(Assets.fontMed);
-        g.drawString("Volumen:", volumeBarBounds.x - 140, volumeBarBounds.y + 18);
-        g.setColor(Color.GRAY);
-        g.fillRect(volumeBarBounds.x, volumeBarBounds.y, volumeBarBounds.width, volumeBarBounds.height);
-        g.setColor(Color.CYAN);
-        g.fillRect(volumeBarBounds.x, volumeBarBounds.y,
+        g2d.setFont(Assets.fontMed);
+        g2d.drawString("Volumen:", volumeBarBounds.x - 140, volumeBarBounds.y + 18);
+        g2d.setColor(Color.GRAY);
+        g2d.fillRect(volumeBarBounds.x, volumeBarBounds.y, volumeBarBounds.width, volumeBarBounds.height);
+        g2d.setColor(Color.CYAN);
+        g2d.fillRect(volumeBarBounds.x, volumeBarBounds.y,
                 (int) (volumeBarBounds.width * SettingsData.getVolume()), volumeBarBounds.height);
-        g.setColor(Color.WHITE);
-        g.fillRect(volumeKnobBounds.x, volumeKnobBounds.y, volumeKnobBounds.width, volumeKnobBounds.height);
+        g2d.setColor(Color.WHITE);
+        g2d.fillRect(volumeKnobBounds.x, volumeKnobBounds.y, volumeKnobBounds.width, volumeKnobBounds.height);
 
         for (String dir : keyButtons.keySet()) {
             Rectangle rect = keyButtons.get(dir);
             boolean hover = rect.contains(MouseInput.getMousePosition());
-            g.drawImage(hover ? buttonHover : buttonNormal, rect.x, rect.y, rect.width, rect.height, null);
+            g2d.drawImage(hover ? buttonHover : buttonNormal, rect.x, rect.y, rect.width, rect.height, null);
 
             String label = getLabel(dir);
             Integer keyCode = keyBindings.get(dir);
@@ -168,16 +175,30 @@ public class SettingsState extends State {
             else if (keyCode != null) keyName = KeyEvent.getKeyText(keyCode);
             else keyName = "Sin asignar";
 
-            g.setColor(Color.BLACK);
-            g.drawString(label + ": " + keyName, rect.x + 25, rect.y + 38);
+            // --- INICIO DE LA MODIFICACIÓN (BOTONES DE TECLAS) ---
+            String buttonText = label + ": " + keyName;
+            Vector2D textPos = new Vector2D(
+                    rect.getX() + rect.getWidth() / 2,
+                    rect.getY() + rect.getHeight() / 2
+            );
+            // Usamos g2d, centramos el texto (true), color Negro y fuente mediana
+            Text.drawText(g2d, buttonText, textPos, true, Color.BLACK, Assets.fontMed);
+            // --- FIN DE LA MODIFICACIÓN ---
         }
 
         boolean hoverBack = backButtonBounds.contains(MouseInput.getMousePosition());
-        g.drawImage(hoverBack ? buttonHover : buttonNormal,
+        g2d.drawImage(hoverBack ? buttonHover : buttonNormal,
                 backButtonBounds.x, backButtonBounds.y,
                 backButtonBounds.width, backButtonBounds.height, null);
-        g.setColor(Color.BLACK);
-        g.drawString("VOLVER", backButtonBounds.x + 110, backButtonBounds.y + 45);
+
+        // --- INICIO DE LA MODIFICACIÓN (BOTÓN VOLVER) ---
+        Vector2D backTextPos = new Vector2D(
+                backButtonBounds.getX() + backButtonBounds.getWidth() / 2,
+                backButtonBounds.getY() + backButtonBounds.getHeight() / 2
+        );
+        // Usamos g2d, centramos el texto (true), color Negro y fuente mediana
+        Text.drawText(g2d, "VOLVER", backTextPos, true, Color.BLACK, Assets.fontMed);
+        // --- FIN DE LA MODIFICACIÓN ---
     }
 
     private String getLabel(String key) {
