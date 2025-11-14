@@ -67,6 +67,10 @@ public class Assets {
     //ANIMACION DE ESCUDO
     public static BufferedImage[] shield_effect = new BufferedImage[3];
 
+    // Fondos del Menu Principal
+    public static BufferedImage menuBg_Static;
+    public static BufferedImage menuStarsSmall1, menuStarsSmall2, menuStarsBig1, menuStarsBig2;
+
     public static void init(){
 
         // Carga de fuentes PRIMERO, porque la pantalla de carga las usa
@@ -168,6 +172,17 @@ public class Assets {
         shield_effect[0] = Loader.ImageLoader("/shield/shield1.png");
         shield_effect[1] = Loader.ImageLoader("/shield/shield2.png");
         shield_effect[2] = Loader.ImageLoader("/shield/shield3.png");
+
+        // Cargar las 7 imagenes del fondo del menu, TODAS escaladas a 1280x720
+        int w = Constants.WIDTH;  // 1280
+        int h = Constants.HEIGHT; // 720
+
+        //Carga de imagenes del fondo menu
+        menuBg_Static = Loader.ImageLoader("/menu_bg/menuBg1.png");
+        menuStarsSmall1 = Loader.ImageLoader("/menu_bg/starsSmall1.png");
+        menuStarsSmall2 = Loader.ImageLoader("/menu_bg/starsSmall2.png");
+        menuStarsBig1 = Loader.ImageLoader("/menu_bg/starsBig1.png");
+        menuStarsBig2 = Loader.ImageLoader("/menu_bg/starsBig2.png");
 
     }
 }

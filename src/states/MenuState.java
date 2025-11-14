@@ -2,6 +2,9 @@ package states;
 
 import gameObject.*;
 import graphics.Assets;
+// --- INICIO DE LA MODIFICACIÓN ---
+import graphics.MenuBackground; // Importar la nueva clase
+// --- FIN DE LA MODIFICACIÓN ---
 import input.MouseInput;
 import math.Vector2D;
 import ui.Action;
@@ -17,10 +20,18 @@ public class MenuState extends State {
     private ArrayList<MenuMeteor> meteors;
     private ArrayList<MenuExplosion> explosions;
 
+    // --- INICIO DE LA MODIFICACIÓN ---
+    private MenuBackground menuBackground; // Objeto para el fondo parallax
+    // --- FIN DE LA MODIFICACIÓN ---
+
     public MenuState() {
         buttons = new ArrayList<>();
         meteors = new ArrayList<>();
         explosions = new ArrayList<>();
+
+        // --- INICIO DE LA MODIFICACIÓN ---
+        menuBackground = new MenuBackground(); // Instanciar el fondo
+        // --- FIN DE LA MODIFICACIÓN ---
 
         // ------------------ BOTONES ------------------
         int buttonWidth = Assets.buttonS1.getWidth();
@@ -109,6 +120,10 @@ public class MenuState extends State {
     public void update() {
         MouseInput.update();
 
+        // --- INICIO DE LA MODIFICACIÓN ---
+        menuBackground.update(); // Actualizar el fondo
+        // --- FIN DE LA MODIFICACIÓN ---
+
         // Actualizar botones
         for (Button b : buttons) {
             b.update();
@@ -168,9 +183,14 @@ public class MenuState extends State {
 
     @Override
     public void draw(Graphics g) {
+        // --- INICIO DE LA MODIFICACIÓN ---
         // Fondo
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, Constants.WIDTH, Constants.HEIGHT);
+        menuBackground.draw(g); // Dibujar el fondo parallax
+
+        // Ya no necesitamos el fondo negro estático:
+        // g.setColor(Color.BLACK);
+        // g.fillRect(0, 0, Constants.WIDTH, Constants.HEIGHT);
+        // --- FIN DE LA MODIFICACIÓN ---
 
         // Dibujar meteoritos
         for (MenuMeteor m : meteors) {
