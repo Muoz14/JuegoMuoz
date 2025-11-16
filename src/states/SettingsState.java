@@ -2,11 +2,9 @@ package states;
 
 import gameObject.Constants;
 import graphics.Assets;
-// --- INICIO DE LA MODIFICACIÓN ---
 import graphics.MenuBackground;
-import graphics.Text; // <-- 1. IMPORTAR TEXT
-import math.Vector2D; // <-- 2. IMPORTAR VECTOR2D
-// --- FIN DE LA MODIFICACIÓN ---
+import graphics.Text;
+import math.Vector2D;
 import graphics.SoundManager;
 import input.KeyBoard;
 import input.MouseInput;
@@ -146,7 +144,7 @@ public class SettingsState extends State {
     public void draw(Graphics g) {
 
         menuBackground.draw(g);
-        Graphics2D g2d = (Graphics2D) g; // <-- 3. Usar g2d
+        Graphics2D g2d = (Graphics2D) g;
 
         g2d.setColor(Color.WHITE);
         g2d.setFont(Assets.fontBig);

@@ -34,8 +34,7 @@ public class ShipLibrary {
                 new Vector2D(0, 0)
         );
 
-        // --- ¡AQUI AJUSTAS LOS DISPAROS DE LA NAVE 1! ---
-        // Mejorado: 2 disparos laterales (como en tus flechas)
+        // Mejorado: 2 disparos laterales
         List<Vector2D> upgradedGunOffsets1 = List.of(
                 new Vector2D(-25, 0), // (X, Y) Disparo Izquierdo
                 new Vector2D(25, 0)   // (X, Y) Disparo Derecho
@@ -71,12 +70,11 @@ public class ShipLibrary {
                 new Vector2D(separation, 0)
         );
 
-        // --- ¡AQUI AJUSTAS LOS DISPAROS DE LA NAVE 2! ---
         // Mejorado: 3 disparos (laterales + 1 central por la "boca")
         List<Vector2D> upgradedGunOffsets2 = List.of(
                 new Vector2D(-separation, 0), // (X, Y) Disparo Izquierdo
                 new Vector2D(separation, 0),  // (X, Y) Disparo Derecho
-                new Vector2D(0, -10)          // (X, Y) Disparo Central (0,0 es el centro. Usa Y negativo para moverlo "arriba" o "adelante")
+                new Vector2D(0, -10)          // (X, Y) Disparo Central
         );
 
         // Propulsor
@@ -96,9 +94,53 @@ public class ShipLibrary {
                 Assets.laserPersonalizado2
         );
 
+        // --- INICIO DE LA MODIFICACIÓN ---
+
+        // =================================================================
+        // NAVE 3 (playerShip2_Carlos, "Nova")
+        // Imagen: Assets.player3 (66x65)
+        // =================================================================
+
+        // Base: 2 disparos (Ajusta el valor X para separarlos)
+        List<Vector2D> gunOffsets3 = List.of(
+                new Vector2D(-20, 0), // Cañón izquierdo (X negativo)
+                new Vector2D(20, 0)   // Cañón derecho (X positivo)
+        );
+
+        // Mejorado: 3 disparos (los 2 base + 1 en la "boca")
+        List<Vector2D> upgradedGunOffsets3 = List.of(
+                new Vector2D(-20, 0), // Cañón izquierdo
+                new Vector2D(20, 0),  // Cañón derecho
+                new Vector2D(0, -10)  // Disparo de la "boca" (Y negativo = adelante)
+        );
+
+        // Propulsor (Nave 66x65, Propulsor 50x50)
+        // (X: 66/2 - 6 = 27)
+        // (Y: 65 - 10 = 55)
+        List<Vector2D> thrusterOffsets3 = List.of(
+                // Ajusta estos valores X, Y para centrar el propulsor
+                new Vector2D(8, 40)
+        );
+
+        ShipData ship3 = new ShipData(
+                "Nova", // Puedes cambiarle el nombre aquí
+                Assets.player3, // Textura de la nave 3
+                Constants.PLAYER_MAX_VEL,
+                Constants.FIRERATE,
+                gunOffsets3,
+                upgradedGunOffsets3, // Lista mejorada
+                thrusterOffsets3,
+                Assets.propulsor3, // Nuevo propulsor
+                Assets.laserPersonalizado1 // Puedes cambiarlo a laserPersonalizado2 si quieres
+        );
+
+        // --- FIN DE LA MODIFICACIÓN ---
+
+
         // --- Anadir naves a la lista ---
         ships.add(ship1);
         ships.add(ship2);
+        ships.add(ship3); // <-- AÑADIDO
     }
 
     // === Metodos de seleccion ===

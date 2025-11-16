@@ -2,7 +2,7 @@ package states;
 
 import gameObject.*;
 import graphics.Assets;
-import graphics.MenuBackground; // Importar
+import graphics.MenuBackground;
 import input.MouseInput;
 import math.Vector2D;
 import ui.Action;
@@ -18,27 +18,32 @@ public class MenuState extends State {
     private ArrayList<MenuMeteor> meteors;
     private ArrayList<MenuExplosion> explosions;
 
-    private MenuBackground menuBackground; // Objeto para el fondo parallax
+    private MenuBackground menuBackground;
+
+    // Posición Y del primer botón
+    private int startY;
 
     public MenuState() {
         buttons = new ArrayList<>();
         meteors = new ArrayList<>();
         explosions = new ArrayList<>();
 
-        menuBackground = new MenuBackground(); // Instanciar el fondo
+        menuBackground = new MenuBackground();
 
         // ------------------ BOTONES (MODIFICADO) ------------------
         int buttonWidth = Assets.buttonS1.getWidth();
         int buttonHeight = Assets.buttonS1.getHeight();
-        final int SPACING = 20; // Espacio entre botones
+        final int SPACING = 20;
         int centerX = Constants.WIDTH / 2 - buttonWidth / 2;
 
-        // 3 botones principales
+        // Ahora son 3 botones principales
         final int TOTAL_GROUP_HEIGHT = 3 * buttonHeight + 2 * SPACING;
-        final int START_Y = Constants.HEIGHT / 2 - TOTAL_GROUP_HEIGHT / 2;
+
+        // Lo centramos, y luego le sumamos 50 píxeles para bajarlo todo
+        this.startY = (Constants.HEIGHT / 2 - TOTAL_GROUP_HEIGHT / 2) + 50;
 
         // Boton JUGAR
-        buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y, Constants.PLAY, new Action() {
+        buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, startY, Constants.PLAY, new Action() {
             @Override
             public void doAction() {
                 Assets.buttonSelected.play();
@@ -46,8 +51,8 @@ public class MenuState extends State {
             }
         }));
 
-        // Boton PUNTUACIONES
-        buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y + 1 * (buttonHeight + SPACING), Constants.SCORE, new Action() {
+        // Boton PUNTUACIONES (Ajustar Y)
+        buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, startY + 1 * (buttonHeight + SPACING), Constants.SCORE, new Action() {
             @Override
             public void doAction() {
                 Assets.buttonSelected.play();
@@ -55,8 +60,8 @@ public class MenuState extends State {
             }
         }));
 
-        // Boton AJUSTES
-        buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, START_Y + 2 * (buttonHeight + SPACING), Constants.SETTINGS, new Action() {
+        // Boton AJUSTES (Ajustar Y)
+        buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, centerX, startY + 2 * (buttonHeight + SPACING), Constants.SETTINGS, new Action() {
             @Override
             public void doAction() {
                 Assets.buttonSelected.play();
@@ -64,7 +69,7 @@ public class MenuState extends State {
             }
         }));
 
-        // Boton SALIR
+        // Boton SALIR (Sin cambios)
         final int MARGIN_X = 25;
         final int MARGIN_Y = 45;
         buttons.add(new Button(Assets.buttonS1, Assets.buttonS2, Constants.WIDTH - buttonWidth - MARGIN_X, Constants.HEIGHT - buttonHeight - MARGIN_Y, Constants.EXIT, new Action() {
@@ -76,7 +81,7 @@ public class MenuState extends State {
         }));
 
         // ------------------ METEORITOS DECORATIVOS ------------------
-        int initialMeteors = 5 + (int) (Math.random() * 6); // entre 5 y 10 meteoritos
+        int initialMeteors = 5 + (int) (Math.random() * 6);
         for (int i = 0; i < initialMeteors; i++) {
             addRandomMeteor();
         }
@@ -156,25 +161,46 @@ public class MenuState extends State {
         }
     }
 
+
     @Override
     public void draw(Graphics g) {
         // Fondo
-        menuBackground.draw(g); // Dibujar el fondo parallax
+        menuBackground.draw(g);
 
-        // Dibujar meteoritos
+        // --- INICIO DE LA MODIFICACIÓN (ORDEN DE DIBUJADO) ---
+
+        // 1. Dibujar meteoritos
         for (MenuMeteor m : meteors) {
             m.draw(g);
         }
 
-        // Dibujar explosiones
+        // 2. Dibujar explosiones
         for (MenuExplosion e : explosions) {
             e.draw(g);
         }
 
-        // Dibujar botones
+        // 3. DIBUJAR TÍTULO (Tamaño Original 334x260)
+        if (Assets.gameTitle != null) {
+
+            // Obtener el ancho y alto de la imagen
+            int titleWidth = Assets.gameTitle.getWidth();  // 334
+            int titleHeight = Assets.gameTitle.getHeight(); // 260
+
+            // Centrarlo horizontalmente
+            int titleX = Constants.WIDTH / 2 - titleWidth / 2;
+
+            // Posicionarlo 10px arriba del primer botón (startY)
+            int titleY = this.startY - titleHeight - 10;
+
+            // Dibujar la imagen sin escalar
+            g.drawImage(Assets.gameTitle, titleX, titleY, null);
+        }
+
+        // 4. Dibujar botones
         for (Button b : buttons) {
             b.draw(g);
         }
+        // --- FIN DE LA MODIFICACIÓN ---
     }
 
     // ------------------ SUBCLASES INTERNAS ------------------

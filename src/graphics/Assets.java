@@ -9,10 +9,12 @@ public class Assets {
     //Objeto que almacenara la imagen de la nave del jugador
     public static BufferedImage player1;
     public static BufferedImage player2;
+    public static BufferedImage player3;
 
     //efectos de propulsion
     public static BufferedImage propulsor1;
     public static BufferedImage propulsor2;
+    public static BufferedImage propulsor3;
 
     //lasers
     public static BufferedImage laserPersonalizado1;
@@ -53,6 +55,7 @@ public class Assets {
 
     //Jefes
     public static BufferedImage miniBoss;
+    public static BufferedImage finalBoss;
 
     //Fondo de GameState
     public static BufferedImage layer01;
@@ -71,10 +74,13 @@ public class Assets {
     public static BufferedImage menuBg_Static;
     public static BufferedImage menuStarsSmall1, menuStarsSmall2, menuStarsBig1, menuStarsBig2;
 
+    //Enemigo raider
     public static BufferedImage raider;
 
-    public static BufferedImage finalBoss;
+    //Enemigo acompañante del jefe
     public static BufferedImage minion;
+
+    public static BufferedImage gameTitle;
 
     public static void init(){
 
@@ -84,9 +90,12 @@ public class Assets {
 
         player1 = Loader.ImageLoader("/ships/playerShip1_Muoz.png");
         player2 = Loader.ImageLoader("/ships/playerShip4_Muoz.png");
+        player3 = Loader.ImageLoader("/ships/playerShip2_Carlos.png");
+
 
         propulsor1 = Loader.ImageLoader("/effects/fire03.png");
         propulsor2 = Loader.ImageLoader("/effects/fire01.png");
+        propulsor3 = Loader.ImageLoader("/effects/fire04.png");
 
         laserPersonalizado1 = Loader.ImageLoader("/lasers/laserRed02.png");
         laserPersonalizado2 = Loader.ImageLoader("/lasers/laser01-Pers.png");
@@ -193,6 +202,8 @@ public class Assets {
 
         finalBoss = Loader.ImageLoader("/boss/bossFinal.png");
         minion = Loader.ImageLoader("/boss/esbirro.png");
+
+        gameTitle = Loader.ImageLoader("/title/titleGame.png");
 
     }
 }
