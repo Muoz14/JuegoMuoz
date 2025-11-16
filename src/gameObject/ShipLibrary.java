@@ -15,7 +15,9 @@ public class ShipLibrary {
 
     public static List<ShipData> ships = new ArrayList<>();
     private static int selectedShip = 0;
-    private static int selectedLaser = 0;
+    // --- INICIO DE LA MODIFICACION ---
+    private static int selectedLaser = 0; // 0: LaserRed02, 1: Laser01-Pers, 2: Bolt, 3: Spark, 4: Pulse
+    // --- FIN DE LA MODIFICACION ---
 
     /**
      * Carga todas las naves en la memoria.
@@ -94,8 +96,6 @@ public class ShipLibrary {
                 Assets.laserPersonalizado2
         );
 
-        // --- INICIO DE LA MODIFICACIÓN ---
-
         // =================================================================
         // NAVE 3 (playerShip2_Carlos, "Nova")
         // Imagen: Assets.player3 (66x65)
@@ -103,14 +103,14 @@ public class ShipLibrary {
 
         // Base: 2 disparos (Ajusta el valor X para separarlos)
         List<Vector2D> gunOffsets3 = List.of(
-                new Vector2D(-20, 0), // Cañón izquierdo (X negativo)
-                new Vector2D(20, 0)   // Cañón derecho (X positivo)
+                new Vector2D(-20, 0), // Canon izquierdo (X negativo)
+                new Vector2D(20, 0)   // Canon derecho (X positivo)
         );
 
         // Mejorado: 3 disparos (los 2 base + 1 en la "boca")
         List<Vector2D> upgradedGunOffsets3 = List.of(
-                new Vector2D(-20, 0), // Cañón izquierdo
-                new Vector2D(20, 0),  // Cañón derecho
+                new Vector2D(-20, 0), // Canon izquierdo
+                new Vector2D(20, 0),  // Canon derecho
                 new Vector2D(0, -10)  // Disparo de la "boca" (Y negativo = adelante)
         );
 
@@ -123,7 +123,7 @@ public class ShipLibrary {
         );
 
         ShipData ship3 = new ShipData(
-                "Nova", // Puedes cambiarle el nombre aquí
+                "Nova", // Puedes cambiarle el nombre aqui
                 Assets.player3, // Textura de la nave 3
                 Constants.PLAYER_MAX_VEL,
                 Constants.FIRERATE,
@@ -134,13 +134,11 @@ public class ShipLibrary {
                 Assets.laserPersonalizado1 // Puedes cambiarlo a laserPersonalizado2 si quieres
         );
 
-        // --- FIN DE LA MODIFICACIÓN ---
-
 
         // --- Anadir naves a la lista ---
         ships.add(ship1);
         ships.add(ship2);
-        ships.add(ship3); // <-- AÑADIDO
+        ships.add(ship3);
     }
 
     // === Metodos de seleccion ===
@@ -168,14 +166,24 @@ public class ShipLibrary {
     }
 
     public static void setSelectedLaser(int index) {
-        selectedLaser = index;
+
+        // Ahora tenemos 5 lasers (0, 1, 2, 3, 4)
+        if (index >= 0 && index <= 4) {
+            selectedLaser = index;
+        }
+
     }
 
     public static BufferedImage getSelectedLaserImage() {
+
         switch (selectedLaser) {
             case 0: return Assets.laserPersonalizado1;
             case 1: return Assets.laserPersonalizado2;
+            case 2: return Assets.boltLasers[3]; // Devuelve bolt4.png como preview
+            case 3: return Assets.sparkLasers[0]; // Devuelve spark1.png como preview
+            case 4: return Assets.pulseLasers[0]; // Devuelve pulse1.png como preview
             default: return Assets.laserPersonalizado1;
         }
+
     }
 }

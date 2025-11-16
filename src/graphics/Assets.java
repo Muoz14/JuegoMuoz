@@ -19,6 +19,9 @@ public class Assets {
     //lasers
     public static BufferedImage laserPersonalizado1;
     public static BufferedImage laserPersonalizado2;
+    public static BufferedImage[] boltLasers = new BufferedImage[4];
+    public static BufferedImage[] sparkLasers = new BufferedImage[5];
+    public static BufferedImage[] pulseLasers = new BufferedImage[4];
 
     //Laser UFO
     public static BufferedImage ufoLaser;
@@ -88,17 +91,32 @@ public class Assets {
         fontBig = Loader.loadFont("/fonts/futureFont.ttf", 42);
         fontMed = Loader.loadFont("/fonts/futureFont.ttf", 20);
 
+        //Carga de naves
         player1 = Loader.ImageLoader("/ships/playerShip1_Muoz.png");
         player2 = Loader.ImageLoader("/ships/playerShip4_Muoz.png");
         player3 = Loader.ImageLoader("/ships/playerShip2_Carlos.png");
 
-
+        //Carga de propulsores
         propulsor1 = Loader.ImageLoader("/effects/fire03.png");
         propulsor2 = Loader.ImageLoader("/effects/fire01.png");
         propulsor3 = Loader.ImageLoader("/effects/fire04.png");
 
+        //Carga de lasers
         laserPersonalizado1 = Loader.ImageLoader("/lasers/laserRed02.png");
         laserPersonalizado2 = Loader.ImageLoader("/lasers/laser01-Pers.png");
+
+        //Carga de lasers animados
+        for(int i = 0; i < boltLasers.length; i++) {
+            boltLasers[i] = Loader.ImageLoader("/lasers/bolt" + (i + 1) + ".png");
+        }
+
+        for(int i = 0; i < sparkLasers.length; i++) {
+            sparkLasers[i] = Loader.ImageLoader("/lasers/spark" + (i + 1) + ".png");
+        }
+
+        for(int i = 0; i < pulseLasers.length; i++) {
+            pulseLasers[i] = Loader.ImageLoader("/lasers/pulse" + (i + 1) + ".png");
+        }
 
         // Cargar cada familia de meteoros
         for (int i = 0; i < 3; i++) {

@@ -13,19 +13,39 @@ import java.util.ArrayList;
 public class Laser extends MovingObject {
 
     private boolean playerLaser;
-
-    // Un 'Shape' para la hitbox rectangular que puede ser rotada
     protected Shape hitbox;
 
+    // --- INICIO DE LA MODIFICACION ---
+    private BufferedImage[] frames; // Para animacion
+    private int currentFrame;
+    private Chronometer animTimer;
+    private static final int ANIM_SPEED_MS = 80; // Milisegundos por frame (ajusta si es muy rapido/lento)
+    // --- FIN DE LA MODIFICACION ---
+
+
+    // Constructor ESTATICO (original, para enemigos y lasers simples)
     public Laser(Vector2D position, Vector2D velocity, double maxVel, double angle,
                  BufferedImage texture, GameState gameState, boolean playerLaser) {
         super(position, velocity.scale(maxVel), maxVel, texture, gameState);
         this.angle = angle;
         this.playerLaser = playerLaser;
-
-        // Inicializar la hitbox (se actualizara en update)
+        this.frames = null; // No es animado
         updateHitbox();
     }
+
+    // Constructor ANIMADO (nuevo, para el jugador)
+    public Laser(Vector2D position, Vector2D velocity, double maxVel, double angle,
+                 BufferedImage[] frames, GameState gameState, boolean playerLaser) {
+        super(position, velocity.scale(maxVel), maxVel, frames[0], gameState); // Usa el frame 0 como base
+        this.angle = angle;
+        this.playerLaser = playerLaser;
+        this.frames = frames; // Guarda los frames
+        this.currentFrame = 0;
+        this.animTimer = new Chronometer();
+        this.animTimer.run(ANIM_SPEED_MS);
+        updateHitbox();
+    }
+
 
     public boolean isPlayerLaser() {
         return playerLaser;
@@ -35,16 +55,13 @@ public class Laser extends MovingObject {
      * Actualiza la posicion y rotacion de la hitbox rectangular.
      */
     private void updateHitbox() {
-        // 1. Crear la transformacion igual que en el metodo draw()
         AffineTransform at = AffineTransform.getTranslateInstance(position.getX() - width / 2.0, position.getY());
         at.rotate(angle, width / 2.0, 0);
 
-        // 2. Crear un rectangulo base (sin rotar) que sea mas delgado
         double hitboxWidth = width * 0.7;
         double xOffset = (width - hitboxWidth) / 2.0;
         Rectangle2D.Double baseRect = new Rectangle2D.Double(xOffset, 0, hitboxWidth, height);
 
-        // 3. Aplicar la transformacion al rectangulo para crear el 'Shape' final
         this.hitbox = at.createTransformedShape(baseRect);
     }
 
@@ -57,7 +74,26 @@ public class Laser extends MovingObject {
             Destroy();
         }
 
-        // Actualizar la hitbox en cada frame
+        // --- INICIO DE LA MODIFICACION (Logica de Animacion) ---
+        if (frames != null) {
+            animTimer.update();
+            if (animTimer.isFinished()) {
+                currentFrame++;
+                if (currentFrame >= frames.length) {
+                    currentFrame = 0; // Bucle
+                }
+                this.texture = frames[currentFrame]; // Actualiza la textura actual
+
+                // Actualizar ancho/alto por si los frames son distintos
+                this.width = this.texture.getWidth();
+                this.height = this.texture.getHeight();
+
+                animTimer.run(ANIM_SPEED_MS); // Reinicia el timer
+            }
+        }
+        // --- FIN DE LA MODIFICACION ---
+
+        // Actualizar la hitbox en cada frame (importante para frames de distinto tamano)
         updateHitbox();
 
         collidesWith();
@@ -65,8 +101,6 @@ public class Laser extends MovingObject {
 
     /**
      * Logica de colision sobrescrita.
-     * Los lasers del jugador usan una hitbox rectangular precisa.
-     * Los lasers enemigos usan la logica circular simple (heredada).
      */
     @Override
     protected void collidesWith() {
@@ -85,39 +119,24 @@ public class Laser extends MovingObject {
             if (m.equals(this)) continue;
             if (m.isSpawnImmune()) continue;
 
-            // El laser del jugador NO colisiona con:
-            // 1. Otros lasers (sean enemigos o no)
-            // 2. El propio jugador
             if (m instanceof Laser || m instanceof Player) {
                 continue;
             }
 
-            // --- INICIO DE LA CORRECCIÓN ---
-            // El MiniBoss y el FinalBoss manejan sus PROPIAS colisiones.
-            // El láser no debe intentar destruirlos.
             if (m instanceof MiniBoss || m instanceof FinalBoss) {
                 continue;
             }
-            // --- FIN DE LA CORRECCIÓN ---
 
-            // Ignorar los power-ups para que no sean destruidos
             if (m instanceof PowerUp) {
                 continue;
             }
 
-            // Comprobar colision rectangular contra los 'bounds' del otro objeto
             if (this.hitbox.intersects(m.getBounds())) {
 
-                // Anadir la explosion en el centro del objeto golpeado
                 gameState.playExplosion(m.getCenter());
-
                 m.setLastHitByPlayer(true);
-
-                // Destruir el meteoro/ufo y el laser
                 m.Destroy();
                 this.Destroy();
-
-                // Salir del bucle, ya que este laser fue destruido
                 break;
             }
         }
@@ -128,24 +147,16 @@ public class Laser extends MovingObject {
         Graphics2D g2d = (Graphics2D) g;
         AffineTransform at = AffineTransform.getTranslateInstance(position.getX() - width / 2.0, position.getY());
         at.rotate(angle, width / 2.0, 0);
-        g2d.drawImage(texture, at, null);
+        g2d.drawImage(texture, at, null); // Dibuja la 'texture' actual (que es actualizada por el update)
     }
 
     @Override
     public Vector2D getCenter() {
         // Corregido: El centro debe basarse en la altura (height) y la rotacion.
-
-        // 1. Encontrar el centro visual sin rotar
         Point2D.Double center = new Point2D.Double(position.getX(), position.getY() + height / 2.0);
-
-        // 2. Crear una transformacion SOLO para la rotacion alrededor del pivote
         AffineTransform rotation = AffineTransform.getRotateInstance(angle, position.getX(), position.getY());
-
-        // 3. Aplicar la rotacion al punto central
         Point2D.Double rotatedCenter = new Point2D.Double();
         rotation.transform(center, rotatedCenter);
-
-        // 4. Devolver el nuevo centro rotado
         return new Vector2D(rotatedCenter.getX(), rotatedCenter.getY());
     }
 }

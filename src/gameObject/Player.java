@@ -24,7 +24,7 @@ public class Player extends MovingObject {
     private boolean accelerating = false;
     private Chronometer fireRate;
     private ShipData data;
-    private BufferedImage laserTexture;
+    private BufferedImage laserTexture; // Laser por defecto (para tipo 0 y 1)
 
     private AffineTransform at;
 
@@ -49,11 +49,14 @@ public class Player extends MovingObject {
     private boolean isScoreMultiplier = false;
     private Chronometer scoreMultiplierTimer;
 
+    // 0=laser1, 1=laser2, 2=bolt, 3=spark, 4=pulse
+    private int laserType;
+
 
     public Player(Vector2D position, Vector2D velocity, GameState gameState, ShipData data, BufferedImage laserTexture) {
         super(position, velocity, data.getMaxVelocity(), data.getTexture(), gameState);
         this.data = data;
-        this.laserTexture = laserTexture;
+        this.laserTexture = laserTexture; // Este es el laser por defecto
 
         heading = new Vector2D(0, 1);
         acceleration = new Vector2D();
@@ -65,6 +68,17 @@ public class Player extends MovingObject {
         rapidFireTimer = new Chronometer();
         multiShotTimer = new Chronometer();
         scoreMultiplierTimer = new Chronometer();
+
+        // Captura el tipo de laser seleccionado en el menu
+        this.laserType = ShipLibrary.getSelectedLaser();
+
+        // Sobrescribe 'laserTexture' si el tipo seleccionado NO es el animado
+        if (this.laserType == 0) {
+            this.laserTexture = Assets.laserPersonalizado1;
+        } else if (this.laserType == 1) {
+            this.laserTexture = Assets.laserPersonalizado2;
+        }
+        // Si es 2, 3 o 4 (animados), no hacemos nada, 'laserTexture' no se usara
 
         float initialSFXVolume = SettingsData.getVolume() * 1.2f;
         if (initialSFXVolume > 1f) initialSFXVolume = 1f;
@@ -110,15 +124,60 @@ public class Player extends MovingObject {
 
             for (Vector2D offset : currentGunOffsets) {
                 Vector2D rotatedOffset = offset.rotate(angle);
-                gameState.addObject(new Laser(
-                        basePosition.add(rotatedOffset),
-                        heading,
-                        Constants.LASER_VEL,
-                        angle,
-                        laserTexture,
-                        gameState,
-                        true
-                ));
+
+                // --- INICIO DE LA MODIFICACION (SWITCH DE LASER) ---
+                switch(laserType) {
+                    case 0: // Laser 1
+                    case 1: // Laser 2
+                        // Ambos usan el constructor estatico
+                        gameState.addObject(new Laser(
+                                basePosition.add(rotatedOffset),
+                                heading,
+                                Constants.LASER_VEL,
+                                angle,
+                                laserTexture, // Contiene laser1 o laser2
+                                gameState,
+                                true
+                        ));
+                        break;
+
+                    case 2: // Laser Bolt Animado
+                        gameState.addObject(new Laser(
+                                basePosition.add(rotatedOffset),
+                                heading,
+                                Constants.LASER_VEL,
+                                angle,
+                                Assets.boltLasers, // Pasa el array de imagenes
+                                gameState,
+                                true
+                        ));
+                        break;
+
+                    case 3: // Laser Spark Animado
+                        gameState.addObject(new Laser(
+                                basePosition.add(rotatedOffset),
+                                heading,
+                                Constants.LASER_VEL,
+                                angle,
+                                Assets.sparkLasers, // Pasa el array de imagenes
+                                gameState,
+                                true
+                        ));
+                        break;
+
+                    case 4: // Laser Pulse Animado
+                        gameState.addObject(new Laser(
+                                basePosition.add(rotatedOffset),
+                                heading,
+                                Constants.LASER_VEL,
+                                angle,
+                                Assets.pulseLasers, // Pasa el array de imagenes
+                                gameState,
+                                true
+                        ));
+                        break;
+                }
+                // --- FIN DE LA MODIFICACION ---
             }
 
             long currentFireRate = isRapidFire ? (long)(Constants.FIRERATE * 0.5) : Constants.FIRERATE;
@@ -179,10 +238,7 @@ public class Player extends MovingObject {
     private void resetValues() {
         angle = 0;
         velocity = new Vector2D();
-        // --- INICIO DE LA MODIFICACIÓN ---
-        // Ya no es fijo. Pregunta al GameState dónde reaparecer.
         position = gameState.requestPlayerRespawnPosition();
-        // --- FIN DE LA MODIFICACIÓN ---
         gameState.subtractLife();
     }
 
@@ -342,53 +398,40 @@ public class Player extends MovingObject {
     }
 
     /**
-     * Activa todos los power-ups a la vez, con una duración fija.
+     * Activa todos los power-ups a la vez, con una duracion fija.
      * Usado como recompensa por vencer al jefe.
-     * @param duration Duración en milisegundos.
+     * @param duration Duracion en milisegundos.
      */
     public void activateAllPowerUps(long duration) {
-        // Activa el escudo Nivel 3 (Oro)
         activateShield(PowerUpType.GOLD, duration);
-
-        // Activa Disparo Rápido
         activateRapidFire(PowerUpType.RAPID_FIRE, duration);
-
-        // Activa Multi-Disparo
         activateMultiShot(PowerUpType.MULTI_SHOT, duration);
-
-        // Activa Puntos Dobles
         activateScoreMultiplier(PowerUpType.DOUBLE_POINTS, duration);
     }
 
-    // --- Métodos de Pausa/Reanudar Timers ---
+    // --- Metodos de Pausa/Reanudar Timers ---
 
     /**
-     * Pausa todos los cronómetros internos del jugador.
+     * Pausa todos los cronometros internos del jugador.
      */
     public void pauseTimers() {
-        // Timers de Power-ups
         shieldTimer.pause();
         rapidFireTimer.pause();
         multiShotTimer.pause();
         scoreMultiplierTimer.pause();
-
-        // Timers internos
         fireRate.pause();
         spawnTime.pause();
         flickerTime.pause();
     }
 
     /**
-     * Reanuda todos los cronómetros internos del jugador.
+     * Reanuda todos los cronometros internos del jugador.
      */
     public void resumeTimers() {
-        // Timers de Power-ups
         shieldTimer.resume();
         rapidFireTimer.resume();
         multiShotTimer.resume();
         scoreMultiplierTimer.resume();
-
-        // Timers internos
         fireRate.resume();
         spawnTime.resume();
         flickerTime.resume();
