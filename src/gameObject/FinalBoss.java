@@ -13,7 +13,7 @@ public class FinalBoss extends MovingObject {
 
     private BossPhase currentPhase;
     private int hitsTaken;
-    private final int MAX_HITS;
+    private final int MAX_HITS; // Ahora es final, se establece en el constructor
     private boolean isIndestructible = false;
 
     // Temporizadores para ataques y spawns
@@ -25,17 +25,21 @@ public class FinalBoss extends MovingObject {
     private Chronometer stateTimer;
     private boolean flicker = false;
 
-    // Posición Fase 1: El borde inferior del jefe estará en Y=280.
+    // Posicion Fase 1: El borde inferior del jefe estara en Y=280.
     private final double Y_POS_PHASE_1 = -515;
 
-    // Posición Fase 2: El borde superior del jefe estará en Y=440.
+    // Posicion Fase 2: El borde superior del jefe estara en Y=440.
     private final double Y_POS_PHASE_2 = 440;
 
 
-    public FinalBoss(Vector2D position, GameState gameState) {
+    // --- INICIO DE LA MODIFICACION ---
+    public FinalBoss(Vector2D position, GameState gameState, int maxHits) {
+        // --- FIN DE LA MODIFICACION ---
         super(position, new Vector2D(), Constants.BOSS_CHARGE_SPEED, Assets.finalBoss, gameState);
         this.gameState = gameState;
-        this.MAX_HITS = Constants.FINAL_BOSS_HEALTH;
+        // --- INICIO DE LA MODIFICACION ---
+        this.MAX_HITS = maxHits; // Se asigna la vida recibida
+        // --- FIN DE LA MODIFICACION ---
         this.hitsTaken = 0;
         this.immuneToMeteors = true;
 
@@ -52,7 +56,7 @@ public class FinalBoss extends MovingObject {
     }
 
     /**
-     * Devuelve si el jefe está en una fase indestructible.
+     * Devuelve si el jefe esta en una fase indestructible.
      */
     public boolean isIndestructible() {
         return isIndestructible;
@@ -100,13 +104,12 @@ public class FinalBoss extends MovingObject {
     }
 
     /**
-     * Lógica principal de la IA del jefe.
+     * Logica principal de la IA del jefe.
      */
     private void updatePhase() {
         switch (currentPhase) {
 
             case ENTERING:
-                // Moverse a la posición superior (Y = -515)
                 if (position.getY() >= Y_POS_PHASE_1) {
                     position.setY(Y_POS_PHASE_1);
                     velocity = new Vector2D();
@@ -178,7 +181,7 @@ public class FinalBoss extends MovingObject {
         }
     }
 
-    // --- Lógica de Transición y Muerte ---
+    // --- Logica de Transicion y Muerte ---
 
     private void startTransition() {
         currentPhase = BossPhase.TRANSITION_1;
@@ -214,9 +217,14 @@ public class FinalBoss extends MovingObject {
 
     @Override
     protected void Destroy() {
-        // Esta es la destrucción final
+        // Esta es la destruccion final
         currentPhase = BossPhase.DEFEATED;
         gameState.onFinalBossDefeated();
+
+        // --- INICIO DE LA MODIFICACION ---
+        // Anadir la puntuacion
+        gameState.addScore(Constants.FINAL_BOSS_SCORE, getCenter());
+        // --- FIN DE LA MODIFICACION ---
 
         Message winMsg = new Message(
                 new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2),
@@ -230,7 +238,7 @@ public class FinalBoss extends MovingObject {
         super.Destroy();
     }
 
-    // --- Lógica de Ataques y Spawns ---
+    // --- Logica de Ataques y Spawns ---
 
     private void spawnMinions() {
         if (minionTimer.isFinished()) {
@@ -257,7 +265,7 @@ public class FinalBoss extends MovingObject {
                 }
             }
 
-            minionTimer.run(15000);
+            minionTimer.run(20000);
         }
     }
 
@@ -268,7 +276,6 @@ public class FinalBoss extends MovingObject {
 
             if (currentPhase == BossPhase.PHASE_2) {
                 // FASE 2: Disparar hacia ARRIBA
-                // Spawnea 1px *fuera* de la hitbox (Y=440), por lo que usamos Y=439
                 double topY = position.getY() - 1;
 
                 shootLaser(new Vector2D(position.getX() + width/4, topY), new Vector2D(0, -1));
@@ -281,7 +288,6 @@ public class FinalBoss extends MovingObject {
 
             } else {
                 // FASE 1: Disparar hacia ABAJO
-                // Spawnea 1px *fuera* de la hitbox (Y=280), por lo que usamos Y=281
                 double bottomY = position.getY() + height + 1;
 
                 shootLaser(new Vector2D(position.getX() + width / 4, bottomY), new Vector2D(0, 1));
@@ -291,7 +297,6 @@ public class FinalBoss extends MovingObject {
                 Vector2D dir2 = playerPos.subtract(new Vector2D(position.getX() + 3 * width / 4, bottomY)).normalize();
                 shootLaser(new Vector2D(position.getX() + width / 4, bottomY), dir1);
                 shootLaser(new Vector2D(position.getX() + 3 * width / 4, bottomY), dir2);
-                // --- FIN DE LA CORRECCIÓN ---
             }
 
             laserTimer.run(3000);
@@ -301,43 +306,35 @@ public class FinalBoss extends MovingObject {
     private void attackSpecial() {
         if (specialTimer.isFinished()) {
 
-            // --- INICIO DE LA MODIFICACIÓN (Ataque especial Izquierda/Derecha) ---
-            boolean attackLeftHalf = Math.random() > 0.5; // Ataca mitad izquierda o derecha
+            boolean attackLeftHalf = Math.random() > 0.5;
             double startAngle;
             double endAngle;
             Vector2D origin;
 
             if (currentPhase == BossPhase.PHASE_2) {
-                // FASE 2: Jefe está ABAJO, jugador está ARRIBA.
-                // Origen: Borde superior central
-                origin = new Vector2D(position.getX() + width / 2, position.getY() - 1); // -1 para estar fuera
+                // FASE 2: Jefe esta ABAJO, jugador esta ARRIBA.
+                origin = new Vector2D(position.getX() + width / 2, position.getY() - 1);
 
                 if (attackLeftHalf) {
-                    // Mitad superior-izquierda (180 a 270 grados)
-                    startAngle = Math.PI;       // 180°
-                    endAngle = Math.PI * 1.5;   // 270°
+                    startAngle = Math.PI;
+                    endAngle = Math.PI * 1.5;
                 } else {
-                    // Mitad superior-derecha (270 a 360 grados)
-                    startAngle = Math.PI * 1.5;   // 270°
-                    endAngle = Math.PI * 2;     // 360°
+                    startAngle = Math.PI * 1.5;
+                    endAngle = Math.PI * 2;
                 }
             } else {
-                // FASE 1: Jefe está ARRIBA, jugador está ABAJO.
-                // Origen: Borde inferior central
-                origin = new Vector2D(position.getX() + width / 2, position.getY() + height + 1); // +1 para estar fuera
+                // FASE 1: Jefe esta ARRIBA, jugador esta ABAJO.
+                origin = new Vector2D(position.getX() + width / 2, position.getY() + height + 1);
 
                 if (attackLeftHalf) {
-                    // Mitad inferior-izquierda (90 a 180 grados)
-                    startAngle = Math.PI / 2; // 90°
-                    endAngle = Math.PI;       // 180°
+                    startAngle = Math.PI / 2;
+                    endAngle = Math.PI;
                 } else {
-                    // Mitad inferior-derecha (0 a 90 grados)
-                    startAngle = 0;           // 0°
-                    endAngle = Math.PI / 2; // 90°
+                    startAngle = 0;
+                    endAngle = Math.PI / 2;
                 }
             }
 
-            // Disparar 20 láseres en un arco de 90° (media pantalla)
             int laserCount = 20;
 
             for (int i = 0; i <= laserCount; i++) {

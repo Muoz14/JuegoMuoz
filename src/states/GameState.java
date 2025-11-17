@@ -237,23 +237,23 @@ public class GameState extends State {
         double x, y;
 
         if (finalBoss != null) {
-            // Jefe Final está activo, spawnear en la zona segura
+            // Jefe Final esta activo, spawnear en la zona segura
             BossPhase phase = finalBoss.getPhase();
 
-            // Si el jefe está arriba (Fase 1) o en transición 1/2
+            // Si el jefe esta arriba (Fase 1) o en transicion 1/2
             if (phase == BossPhase.PHASE_1 || phase == BossPhase.TRANSITION_1 || phase == BossPhase.TRANSITION_2) {
                 // Spawnear en la MITAD INFERIOR de la pantalla
                 x = Math.random() * (Constants.WIDTH - 100) + 50;
                 y = Math.random() * (Constants.HEIGHT / 2 - 100) + (Constants.HEIGHT / 2); // ej. 360 a 620
             } else {
-                // Si el jefe está abajo (Fase 2) o en transición 3
+                // Si el jefe esta abajo (Fase 2) o en transicion 3
                 // Spawnear en la MITAD SUPERIOR de la pantalla
                 x = Math.random() * (Constants.WIDTH - 100) + 50;
                 y = Math.random() * (Constants.HEIGHT / 2 - 150) + 50; // ej. 50 a 210
             }
 
         } else {
-            // Lógica original: spawnear en cualquier lugar
+            // Logica original: spawnear en cualquier lugar
             x = Math.random() * (Constants.WIDTH - 100) + 50;
             y = Math.random() * (Constants.HEIGHT - 100) + 50;
         }
@@ -316,7 +316,7 @@ public class GameState extends State {
             if (!anim.isRunning()) explosion.remove(i);
         }
 
-        // LÓGICA DE PAUSA MEJORADA
+        // LOGICA DE PAUSA MEJORADA
         if (pauseButtonBounds.contains(mouse) && MouseInput.isPressed()) {
             pauseGame();
             MouseInput.releaseClick();
@@ -447,7 +447,7 @@ public class GameState extends State {
             if (obj instanceof MiniBoss) hayMiniBoss = true;
         }
 
-        // 2. Lógica de reabastecimiento de meteoros
+        // 2. Logica de reabastecimiento de meteoros
         if (hayFinalBoss) {
             // Para el Jefe Final, mantener solo 1 meteoro
             if (meteorCount < 1 && !nextWaveStarting) {
@@ -462,7 +462,7 @@ public class GameState extends State {
             }
         }
 
-        // 3. Lógica de Oleada Completada
+        // 3. Logica de Oleada Completada
         if (!hayMeteoros && !hayMiniBoss && !hayRaiderEvent && !hayFinalBoss && firstWaveStarted && !waveCleared && !nextWaveStarting) {
             waveCleared = true;
             waveClearTime = System.currentTimeMillis();
@@ -471,7 +471,7 @@ public class GameState extends State {
             addMessage(completeMsg);
         }
 
-        // 4. Lógica para iniciar la siguiente oleada
+        // 4. Logica para iniciar la siguiente oleada
         if (waveCleared && !nextWaveStarting) {
             long elapsed = System.currentTimeMillis() - waveClearTime;
             if (elapsed >= 3000) {
@@ -479,12 +479,9 @@ public class GameState extends State {
                 nextWaveStarting = true;
                 waves++;
 
-                // --- INICIO DE LA MODIFICACIÓN (METEOR CAP) ---
                 if (waves <= 8) {
                     meteors++; // Aumenta hasta 8
                 }
-                // Si waves > 8, 'meteors' se queda en 8
-                // --- FIN DE LA MODIFICACIÓN ---
 
                 Message waveMessage = new Message(new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2), false, "OLEADA " + waves + "!", Color.WHITE, true, Assets.fontBig, this);
                 waveMessage.setLifespan(3000);
@@ -493,26 +490,32 @@ public class GameState extends State {
                 new Thread(() -> {
                     try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
 
-                    // --- 1. SPAWN JEFE FINAL (Cada 10 oleadas) ---
-                    if (waves > 0 && waves % 10 == 0) {
+                    // --- LOGICA DE SPAWN ---
+
+                    // --- 1. SPAWN JEFE FINAL (Cada 8 oleadas) ---
+                    if (waves > 0 && waves % 8 == 0) {
                         try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
 
-                        // Guardar el contador real de meteoros
                         int oldMeteorCount = meteors;
-                        meteors = 1; // Poner 1 meteoro para la oleada del jefe
+                        meteors = 1;
                         startWave();
-                        meteors = oldMeteorCount; // Restaurar para la proxima oleada
+                        meteors = oldMeteorCount;
 
                         nextWaveStarting = false;
+
+                        // --- Logica de vida del jefe ---
+                        ShipData selectedShip = ShipLibrary.getSelectedShip();
+                        int numCannons = selectedShip.getGunOffsets().size();
+                        int bossHealth = (numCannons == 1) ? 150 : Constants.FINAL_BOSS_HEALTH; // 150 (1 canon) o 350 (2+ canones)
 
                         double spawnX = (Constants.WIDTH / 2.0 - Assets.finalBoss.getWidth() / 2.0) + 100;
                         Vector2D bossPos = new Vector2D(spawnX, -Assets.finalBoss.getHeight());
 
-                        finalBoss = new FinalBoss(bossPos, this);
+                        finalBoss = new FinalBoss(bossPos, this, bossHealth); // Pasa la vida al constructor
                         addObject(finalBoss);
 
-                        // --- 2. SPAWN MINI-BOSS (Cada 4 oleadas, si NO es oleada de Jefe Final) ---
-                    } else if (waves > 0 && waves % 4 == 0) {
+                        // --- 2. SPAWN MINI-BOSS (Cada 5 oleadas, si NO es oleada de Jefe Final) ---
+                    } else if (waves > 0 && waves % 5 == 0) {
                         startWave();
                         nextWaveStarting = false;
 
@@ -540,7 +543,6 @@ public class GameState extends State {
                         startWave();
                         nextWaveStarting = false;
                     }
-                    // --- FIN DE LA MODIFICACIÓN ---
 
                 }).start();
             }
@@ -565,7 +567,7 @@ public class GameState extends State {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } finally {
-                nextWaveStarting = false; // Permitir que la lógica se ejecute de nuevo
+                nextWaveStarting = false; // Permitir que la logica se ejecute de nuevo
             }
         }).start();
     }
@@ -603,7 +605,7 @@ public class GameState extends State {
             }
         }
 
-        // 2. Dibujar el Countdown (si está activo)
+        // 2. Dibujar el Countdown (si esta activo)
         if (startingCountdown && countdownValue > 0) {
             g.setFont(Assets.fontBig);
             g.setColor(Color.WHITE);
@@ -612,7 +614,7 @@ public class GameState extends State {
             g.drawString(text, (Constants.WIDTH - textWidth) / 2, Constants.HEIGHT / 2);
         }
 
-        // 3. Dibujar el menú de pausa (si está activo) ÚLTIMO
+        // 3. Dibujar el menu de pausa (si esta activo) ULTIMO
         if (paused && showPauseMenu) {
             g2d.setColor(new Color(0, 0, 0, (int) (255 * pauseOverlayAlpha)));
             g2d.fillRect(0, 0, Constants.WIDTH, Constants.HEIGHT);
@@ -685,7 +687,7 @@ public class GameState extends State {
             // 1. Obtener el nombre del jugador
             String playerName = PlayerData.getCurrentPlayerName();
 
-            // 2. Añadir la puntuación al ScoreManager
+            // 2. Anadir la puntuacion al ScoreManager
             ScoreManager.addScore(playerName, score);
 
             stopMusic();
@@ -709,39 +711,39 @@ public class GameState extends State {
     }
 
     /**
-     * Callback para que el RaiderSquadManager se "destruya" a sí mismo.
+     * Callback para que el RaiderSquadManager se "destruya" a si mismo.
      */
     public void onRaiderAssaultFinished() {
         this.squadManager = null;
     }
 
     /**
-     * Callback para que el FinalBoss se "destruya" a sí mismo.
+     * Callback para que el FinalBoss se "destruya" a si mismo.
      */
     public void onFinalBossDefeated() {
         this.finalBoss = null;
     }
 
     /**
-     * Devuelve una posición segura para que el jugador reaparezca.
-     * @return Vector2D con la posición de reaparición.
+     * Devuelve una posicion segura para que el jugador reaparezca.
+     * @return Vector2D con la posicion de reaparicion.
      */
     public Vector2D requestPlayerRespawnPosition() {
-        // Si el jefe final está activo
+        // Si el jefe final esta activo
         if (finalBoss != null) {
             BossPhase phase = finalBoss.getPhase();
 
-            // Si el jefe está en Fase 2 (abajo) o en la transición 3 (subiendo)
+            // Si el jefe esta en Fase 2 (abajo) o en la transicion 3 (subiendo)
             if (phase == BossPhase.PHASE_2 || phase == BossPhase.TRANSITION_3) {
                 // Reaparecer ARRIBA
                 return new Vector2D(Constants.WIDTH / 2, 200);
             } else {
-                // Reaparecer ABAJO (para Fase 1, Transición 1 y 2)
+                // Reaparecer ABAJO (para Fase 1, Transicion 1 y 2)
                 return new Vector2D(Constants.WIDTH / 2, 500);
             }
         }
 
-        // Posición por defecto si no hay jefe
+        // Posicion por defecto si no hay jefe
         return new Vector2D(Constants.WIDTH / 2, 320);
     }
 
@@ -750,7 +752,7 @@ public class GameState extends State {
         Color messageColor = Color.WHITE;
         if (player != null && player.isScoreMultiplier()) {
             value *= 2;
-            messageText = "+" + value + " (X2!)";
+            messageText = "+" + value + " X2";
             messageColor = Color.YELLOW;
         } else {
             messageText = "+" + value + " puntos";

@@ -59,6 +59,7 @@ public class Constants {
 
     // Propiedades del Jefe Final
     public static final int FINAL_BOSS_HEALTH = 350;
+    public static final int FINAL_BOSS_SCORE = 5000;
     public static final double BOSS_ENTER_SPEED = 1.0;
     public static final double BOSS_CHARGE_SPEED = 8.0;
 
