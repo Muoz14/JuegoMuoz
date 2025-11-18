@@ -483,10 +483,6 @@ public class GameState extends State {
                     meteors++; // Aumenta hasta 8
                 }
 
-                Message waveMessage = new Message(new Vector2D(Constants.WIDTH / 2, Constants.HEIGHT / 2), false, "OLEADA " + waves + "!", Color.WHITE, true, Assets.fontBig, this);
-                waveMessage.setLifespan(3000);
-                addMessage(waveMessage);
-
                 new Thread(() -> {
                     try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
 
@@ -595,10 +591,10 @@ public class GameState extends State {
                 drawPowerUpBar(g, player.getShieldTimeRemaining(), "ESCUDO", Color.CYAN, activePowerUps++);
             }
             if (player.isRapidFire()) {
-                drawPowerUpBar(g, player.getRapidFireTimeRemaining(), "DISPARO RAPIDO", Color.YELLOW, activePowerUps++);
+                drawPowerUpBar(g, player.getRapidFireTimeRemaining(), "DISPARO R", Color.YELLOW, activePowerUps++);
             }
             if (player.isMultiShot()) {
-                drawPowerUpBar(g, player.getMultiShotTimeRemaining(), "MULTI-DISPARO", Color.GREEN, activePowerUps++);
+                drawPowerUpBar(g, player.getMultiShotTimeRemaining(), "DISPARO++", Color.GREEN, activePowerUps++);
             }
             if (player.isScoreMultiplier()) {
                 drawPowerUpBar(g, player.getScoreMultiplierTimeRemaining(), "PUNTOS X2", new Color(255, 175, 0), activePowerUps++);
